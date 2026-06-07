@@ -1,4 +1,4 @@
-[![Build ESP32-C3 Games](https://github.com/atomic14/esp32-c3-oled-single-button-games/actions/workflows/build-esp32-c3-games.yml/badge.svg)](https://github.com/atomic14/esp32-c3-oled-single-button-games/actions/workflows/build-esp32-c3-games.yml)
+[![Build FemtoDeck C3](https://github.com/atomic14/esp32-c3-oled-single-button-games/actions/workflows/build-femtodeck-c3.yml/badge.svg)](https://github.com/atomic14/esp32-c3-oled-single-button-games/actions/workflows/build-femtodeck-c3.yml)
 
 # ESP32-C3 OLED Single-Button Games
 
@@ -34,7 +34,7 @@ You can pick up one of these cheap modules [here](https://s.click.aliexpress.com
   - shared game state machine (`Start`, `Running`, `End`)
   - common lifecycle hooks for concrete games
 - Each game lives in its own `*.h` and `*.cpp` and implements only running logic/drawing.
-- `esp32-c3-games/esp32-c3-games.ino` handles display init, menu, and game switching.
+- `femtodeck-c3/femtodeck-c3.ino` handles display init, menu, and app switching.
 
 ## Build and Upload
 
@@ -42,8 +42,8 @@ Use Arduino IDE, or `arduino-cli`:
 
 ```sh
 arduino-cli lib install U8g2
-arduino-cli compile --fqbn esp32:esp32:esp32c3 esp32-c3-games
-arduino-cli upload --fqbn esp32:esp32:esp32c3 --port /dev/cu.usbmodem1101 esp32-c3-games
+arduino-cli compile --fqbn esp32:esp32:esp32c3 femtodeck-c3
+arduino-cli upload --fqbn esp32:esp32:esp32c3 --port /dev/cu.usbmodem1101 femtodeck-c3
 ```
 
 ## CI
@@ -51,5 +51,5 @@ arduino-cli upload --fqbn esp32:esp32:esp32c3 --port /dev/cu.usbmodem1101 esp32-
 GitHub Actions builds the sketch on push/PR with:
 
 ```sh
-arduino-cli compile --fqbn esp32:esp32:esp32c3 esp32-c3-games
+arduino-cli compile --fqbn esp32:esp32:esp32c3 femtodeck-c3
 ```

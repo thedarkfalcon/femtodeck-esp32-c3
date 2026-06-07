@@ -8,7 +8,7 @@
   </head>
   <body>
     <main class="shell">
-      <section class="sim-panel" aria-label="ESP32 game simulator">
+      <section class="sim-panel" aria-label="FemtoDeck simulator">
         <div class="screen-wrap">
           <canvas id="oled" width="72" height="40" aria-label="72 by 40 OLED simulator"></canvas>
         </div>
@@ -22,7 +22,7 @@
       </section>
 
       <section class="side-panel">
-        <h1>ESP32-C3 OLED Games Simulator</h1>
+        <h1>FemtoDeck Simulator</h1>
         <p>Use <kbd>Space</kbd> as the single button. Tap for click, hold for long press. The blue dot mirrors GPIO8.</p>
         <div class="toolbar">
           <button id="reset" type="button">Reset Game</button>
@@ -31,9 +31,9 @@
         </div>
         <dl>
           <dt>Menu</dt>
-          <dd>Tap: next game. Hold then release: start selected game.</dd>
-          <dt>Implemented</dt>
-          <dd>Today's custom games are playable. Original Atomic14 games show placeholders for now.</dd>
+          <dd>Tap: next item. Hold then release: open selected item.</dd>
+          <dt>Sections</dt>
+          <dd>Root menu contains Games, Utilities, Options, and Credits.</dd>
         </dl>
       </section>
     </main>

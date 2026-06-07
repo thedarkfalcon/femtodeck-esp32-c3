@@ -3,7 +3,8 @@
   const H = 40;
   const LONG_MS = 700;
   const END_LOCK_MS = 500;
-  const BUILD_TEXT = "v1.1 b18";
+  const BUILD_TEXT = "v1.1 b28";
+  const READING_LINES_PER_PAGE = 3;
 
   const canvas = document.getElementById("oled");
   const ctx = canvas.getContext("2d");
@@ -544,6 +545,115 @@
       gfx.text(3, 10, "Mouse Emulator", 7);
       gfx.text(3, 24, this.active ? "ACTIVE" : "PAUSED", 4);
       gfx.text(3, 36, "Tap toggle Hold menu");
+    }
+    drawStart() { this.draw(); }
+  }
+
+  class ReadingSim extends Game {
+    constructor() {
+      super("Reading");
+      this.readings = [
+        { ref: "Psalm 23:4", text: "Even though I walk through the valley of the shadow of death, I will fear no evil, for You are with me; Your rod and Your staff, they comfort me." },
+        { ref: "John 16:33", text: "I have told you these things so that in Me you may have peace. In the world you will have tribulation. But take courage; I have overcome the world!" },
+        { ref: "Isa 41:10", text: "Do not fear, for I am with you; do not be afraid, for I am your God. I will strengthen you; I will surely help you; I will uphold you with My righteous right hand." },
+        { ref: "Phil 4:6-7", text: "Be anxious for nothing, but in everything, by prayer and petition, with thanksgiving, present your requests to God. And the peace of God, which surpasses all understanding, will guard your hearts and your minds in Christ Jesus." },
+        { ref: "Ps 34:4-5,8", text: "I sought the LORD, and He answered me; He delivered me from all my fears. Those who look to Him are radiant with joy; their faces shall never be ashamed. Taste and see that the LORD is good; blessed is the man who takes refuge in Him!" },
+        { ref: "Romans 8:28", text: "And we know that God works all things together for the good of those who love Him, who are called according to His purpose." },
+        { ref: "Joshua 1:9", text: "Have I not commanded you to be strong and courageous? Do not be afraid; do not be discouraged, for the LORD your God is with you wherever you go." },
+        { ref: "Matt 6:31-34", text: "Therefore do not worry, saying, 'What shall we eat?' or 'What shall we drink?' or 'What shall we wear?' For the Gentiles strive after all these things, and your heavenly Father knows that you need them. But seek first the kingdom of God and His righteousness, and all these things will be added unto you. Therefore do not worry about tomorrow, for tomorrow will worry about itself. Today has enough trouble of its own." },
+        { ref: "Prov 3:5-6", text: "Trust in the LORD with all your heart, and lean not on your own understanding; in all your ways acknowledge Him, and He will make your paths straight." },
+        { ref: "Romans 15:13", text: "Now may the God of hope fill you with all joy and peace as you believe in Him, so that you may overflow with hope by the power of the Holy Spirit." },
+        { ref: "2 Chron 7:14", text: "and if My people who are called by My name humble themselves and pray and seek My face and turn from their wicked ways, then I will hear from heaven, forgive their sin, and heal their land." },
+        { ref: "Phil 2:3-4", text: "Do nothing out of selfish ambition or empty pride, but in humility consider others more important than yourselves. Each of you should look not only to your own interests, but also to the interests of others." },
+        { ref: "Isa 41:13", text: "For I am the LORD your God, who takes hold of your right hand and tells you: Do not fear, I will help you." },
+        { ref: "1 Pet 5:6-7", text: "Humble yourselves, therefore, under God's mighty hand, so that in due time He may exalt you. Cast all your anxiety on Him, because He cares for you." },
+        { ref: "Ps 94:18-19", text: "If I say, 'My foot is slipping,' Your loving devotion, O LORD, supports me. When anxiety overwhelms me, Your consolation delights my soul." },
+        { ref: "Rev 21:4", text: "'He will wipe away every tear from their eyes,' and there will be no more death or mourning or crying or pain, for the former things have passed away." },
+        { ref: "About BSP", text: "All Bible passages quoted from the Berean Standard Bible (BSB). The Berean Bible and Majority Bible texts are officially dedicated to the public domain as of April 30, 2023. All uses are freely permitted. Attribution Notice: The Holy Bible, Berean Standard Bible, BSB is produced in cooperation with Bible Hub, Discovery Bible, OpenBible.com, and the Berean Bible Translation Committee. This text of God's Word has been dedicated to the public domain." }
+      ];
+      this.selected = 0;
+      this.page = 0;
+      this.mode = "select";
+    }
+    begin(now) {
+      this.start(now);
+    }
+    reset() {
+      this.selected = 0;
+      this.page = 0;
+      this.mode = "select";
+    }
+    lines(text) {
+      const words = text.split(/\s+/).filter(Boolean);
+      const lines = [];
+      let line = "";
+      words.forEach((word) => {
+        const next = line ? `${line} ${word}` : word;
+        if (next.length > 17 && line) {
+          lines.push(line);
+          line = word;
+        } else {
+          line = next;
+        }
+      });
+      if (line) lines.push(line);
+      return lines.length ? lines : [""];
+    }
+    hasMoreAfterPage() {
+      return this.lines(this.readings[this.selected].text).length > (this.page + 1) * READING_LINES_PER_PAGE;
+    }
+    update(dt, input, now) {
+      if (this.mode === "select") {
+        if (input.click) this.selected = (this.selected + 1) % (this.readings.length + 1);
+        if (input.longPress) {
+          if (this.selected >= this.readings.length) app.toMenu(now);
+          else {
+            this.page = 0;
+            this.mode = "read";
+          }
+        }
+      } else if (this.mode === "read") {
+        if (input.longPress) this.mode = "select";
+        else if (input.click) {
+          if (this.hasMoreAfterPage()) this.page++;
+          else this.mode = "end";
+        }
+      } else {
+        if (input.longPress) this.mode = "select";
+        if (input.click) {
+          this.page = 0;
+          this.mode = "read";
+        }
+      }
+    }
+    draw() {
+      gfx.rect(0, 0, W, H);
+      if (this.mode === "select") {
+        gfx.text(3, 9, "Reading", 7);
+        gfx.text(52, 9, `${this.selected + 1}/${this.readings.length + 1}`);
+        if (this.selected >= this.readings.length) {
+          gfx.center(23, "Back", 7);
+          gfx.text(3, 38, "Hold menu");
+        } else {
+          gfx.center(23, this.readings[this.selected].ref, 7);
+          gfx.text(3, 31, "Tap next");
+          gfx.text(3, 38, "Hold open");
+        }
+        return;
+      }
+      const reading = this.readings[this.selected];
+      if (this.mode === "read") {
+        gfx.text(3, 7, reading.ref);
+        this.lines(reading.text)
+          .slice(this.page * READING_LINES_PER_PAGE, this.page * READING_LINES_PER_PAGE + READING_LINES_PER_PAGE)
+          .forEach((line, i) => gfx.text(3, 15 + i * 7, line));
+        gfx.text(3, 38, this.hasMoreAfterPage() ? "Tap more" : "Tap END");
+      } else {
+        gfx.center(17, "END", 7);
+        gfx.center(27, reading.ref);
+        gfx.text(3, 34, "Tap restart");
+        gfx.text(3, 39, "Hold list");
+      }
     }
     drawStart() { this.draw(); }
   }
@@ -1953,7 +2063,7 @@
         gfx.disc(50, 24, 5);
         gfx.circle(58, 25, 5);
         gfx.text(3, 9, this.title, 7);
-        gfx.text(3, 29, "2 deck shoe");
+        gfx.text(14, 38, "2 deck shoe");
       }
     }
     draw() {
@@ -2040,7 +2150,7 @@
   class Credits extends Game {
     constructor() {
       super("Credits");
-      this.pages = ["atomic14: Breakout", "atomic14: Micro Racer", "atomic14: Defender Mini", "atomic14: Jump Run", "atomic14: Heli Cave", "thedarkfalcon: Tower", "thedarkfalcon: Golf", "thedarkfalcon: Lander", "thedarkfalcon: Need Speed", "thedarkfalcon: Noon Shooter", "thedarkfalcon: Fishing Flick", "thedarkfalcon: Maze Runner", "thedarkfalcon: Maze Collector", "thedarkfalcon: Pipe Mania", "thedarkfalcon: Blackjack", "thedarkfalcon: Counter", "thedarkfalcon: Stopwatch", "thedarkfalcon: Countdown", "thedarkfalcon: Options", "thedarkfalcon: Credits"];
+      this.pages = ["thedarkfalcon: Femto OS", "atomic14: Breakout", "atomic14: Micro Racer", "atomic14: Defender Mini", "atomic14: Jump Run", "atomic14: Heli Cave", "thedarkfalcon: Tower", "thedarkfalcon: Golf", "thedarkfalcon: Lander", "thedarkfalcon: Need Speed", "thedarkfalcon: Noon Shooter", "thedarkfalcon: Fishing Flick", "thedarkfalcon: Maze Runner", "thedarkfalcon: Maze Collector", "thedarkfalcon: Pipe Mania", "thedarkfalcon: Blackjack", "thedarkfalcon: Counter", "thedarkfalcon: Mouse Emulator", "thedarkfalcon: Reading", "thedarkfalcon: Stopwatch", "thedarkfalcon: Countdown", "thedarkfalcon: Options", "thedarkfalcon: Credits"];
     }
     reset() {
       this.page = 0;
@@ -2078,7 +2188,7 @@
   class App {
     constructor() {
       this.button = new Button();
-      this.games = [
+      this.gameApps = [
         new PlaceholderGame("Breakout"),
         new PlaceholderGame("Micro Racer"),
         new PlaceholderGame("Defender Mini"),
@@ -2093,19 +2203,31 @@
         new PipeMania(),
         new Blackjack(),
         new TinyGolf(),
-        new TowerStacker(),
+        new TowerStacker()
+      ];
+      this.utilityApps = [
         new StopwatchSim(),
         new CountdownSim(),
         new CounterSim(),
         new MouseJigglerSim(),
-        new OptionsGame(),
-        new Credits()
+        new ReadingSim()
       ];
+      this.options = new OptionsGame();
+      this.credits = new Credits();
+      this.rootEntries = [
+        { label: "Games", action: "games" },
+        { label: "Utilities", action: "utilities" },
+        { app: this.options, action: "launch" },
+        { app: this.credits, action: "launch" }
+      ];
+      this.menu = "root";
       this.menuIndex = 0;
       this.inMenu = true;
       this.launchArmed = false;
       this.active = null;
+      this.returnMenu = "root";
       this.last = performance.now();
+      this.bootUntil = this.last + 2000;
     }
     toMenu(now = performance.now()) {
       this.inMenu = true;
@@ -2122,14 +2244,14 @@
       this.last = now;
       const input = this.button.update(now);
       gfx.clear();
-      if (this.inMenu) {
+      if (now < this.bootUntil) {
+        this.drawBootSplash();
+      } else if (this.inMenu) {
         if (input.longPress) this.launchArmed = true;
-        if (input.click && !this.launchArmed) this.menuIndex = (this.menuIndex + 1) % this.games.length;
+        if (input.click && !this.launchArmed) this.menuIndex = (this.menuIndex + 1) % this.currentEntries().length;
         if (this.launchArmed && input.released) {
-          this.active = this.games[this.menuIndex];
-          this.active.begin(now);
-          this.inMenu = false;
-          this.launchArmed = false;
+          this.selectMenuEntry(now);
+          this.button.reset(now);
         }
         this.drawMenu();
       } else {
@@ -2138,12 +2260,52 @@
       }
       requestAnimationFrame((t) => this.tick(t));
     }
-    drawMenu() {
+    currentEntries() {
+      if (this.menu === "games") return [...this.gameApps.map((app) => ({ app, action: "launch" })), { label: "Back", action: "back" }];
+      if (this.menu === "utilities") return [...this.utilityApps.map((app) => ({ app, action: "launch" })), { label: "Back", action: "back" }];
+      return this.rootEntries;
+    }
+    menuTitle() {
+      if (this.menu === "games") return "Games";
+      if (this.menu === "utilities") return "Utilities";
+      return "FemtoDeck";
+    }
+    selectMenuEntry(now) {
+      const entry = this.currentEntries()[this.menuIndex];
+      this.launchArmed = false;
+      if (entry.action === "games" || entry.action === "utilities") {
+        this.menu = entry.action;
+        this.menuIndex = 0;
+        return;
+      }
+      if (entry.action === "back") {
+        this.menu = "root";
+        this.menuIndex = 0;
+        return;
+      }
+      if (entry.app) {
+        this.returnMenu = this.menu;
+        this.active = entry.app;
+        this.active.begin(now);
+        this.inMenu = false;
+      }
+    }
+    drawBootSplash() {
       gfx.rect(0, 0, W, H);
-      gfx.text(3, 9, "Select game", 7);
-      gfx.text(3, 19, this.games[this.menuIndex].title, 7);
-      gfx.text(3, 29, this.launchArmed ? "Release" : "Tap next");
-      gfx.text(3, 38, this.launchArmed ? "to start" : "Hold start");
+      gfx.text(8, 12, "FemtoDeck", 7);
+      gfx.text(30, 25, "C3", 7);
+      gfx.text(20, 38, BUILD_TEXT);
+    }
+    drawMenu() {
+      const entries = this.currentEntries();
+      const entry = entries[this.menuIndex];
+      const title = entry.app ? entry.app.title : entry.label;
+      gfx.rect(0, 0, W, H);
+      gfx.text(3, 9, this.menuTitle(), 4);
+      gfx.text(52, 9, `${this.menuIndex + 1}/${entries.length}`, 4);
+      gfx.text(3, 21, title, title.length > 12 ? 4 : 7);
+      gfx.text(3, 31, this.launchArmed ? "Release" : "Tap next");
+      gfx.text(3, 38, this.launchArmed ? (entry.action === "back" ? "to back" : "to open") : "Hold open");
     }
   }
 

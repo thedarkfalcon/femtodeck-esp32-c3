@@ -8,7 +8,43 @@ To create a new build with an incremented build number, run:
 .\build.ps1
 ```
 
-If compiling manually with `arduino-cli compile`, bump `esp32-c3-games/Version.h` first and add a note here.
+If compiling manually with `arduino-cli compile`, bump `femtodeck-c3/Version.h` first and add a note here.
+
+## v1.1 b28
+
+- Fixed Reading text wrapping so full lines no longer cause unsigned space calculations to swallow following words.
+- Changed the Reading footer to `Tap more` until the final page, then `Tap END`.
+- Removed `BSP` suffixes from reading titles and added an `About BSP` attribution/public-domain reading.
+
+## v1.1 b27
+
+- Updated Reading pages to use three body lines plus a footer showing page progress or `Tap END`.
+- Moved Reading body text away from the bottom edge to avoid clipping on the physical OLED.
+
+## v1.1 b26
+
+- Replaced the Reading utility placeholders with the selected BSP reading set.
+- Synced the browser simulator Reading utility with the firmware readings.
+
+## v1.1 b25
+
+- Added a `Reading` utility app with selectable reading slots and automatic text wrapping/paging.
+- Added neutral placeholder reading text so final long-form text can be pasted locally later.
+
+## v1.1 b24
+
+- Lowered Blackjack's `2 deck shoe` splash text so it no longer overlaps the card/chip art.
+- Added a `Femto OS` credits page for `thedarkfalcon`.
+- Changed the boot splash to `FemtoDeck` with `C3` as the model line and the build string on-screen.
+- Shortened the root menu title to `FemtoDeck` and renamed the sketch folder/file to `femtodeck-c3`.
+- Renamed the GitHub Actions workflow to `build-femtodeck-c3.yml` and removed the old sponsor funding file.
+
+## v1.1 b23
+
+- Renamed the shared launchable base from `Game` to `App` and renamed utility/system files and classes to `*App`.
+- Replaced the flat firmware menu with a root menu containing `Games`, `Utilities`, `Options`, and `Credits`.
+- Added a short `C3 FemtoDeck` boot splash screen.
+- Updated the browser simulator to mirror the boot splash and folder-style menu.
 
 ## v1.1 b22
 
