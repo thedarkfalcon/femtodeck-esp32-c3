@@ -1,2 +1,5 @@
 .github/instructions/
 TODO.txt
+femtodeck-c3/build/
+dist/
+site/

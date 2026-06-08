@@ -118,6 +118,19 @@ some apps without flashing the ESP32-C3 every time. It is not a perfect hardware
 emulator, but it is useful for checking menu flow, text fit, and basic gameplay
 ideas.
 
+## Distribution
+
+GitHub Actions builds release-ready firmware on every validation run.
+
+- The workflow artifact `femtodeck-c3-firmware` contains the merged binary,
+  split binaries, and fallback flashing scripts.
+- Push a tag such as `v1.1-b44` to create a GitHub Release with the firmware zip.
+- Push to the default branch to publish the ESP Web Tools browser installer on
+  GitHub Pages.
+
+The browser installer is the recommended way for most users to flash a device.
+They only need Chrome or Edge on desktop and a USB cable.
+
 ## License
 
 FemtoDeck C3 is released under WTFPL + No Warranty Disclaimer. See `LICENSE` for
