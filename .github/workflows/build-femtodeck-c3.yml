@@ -10,12 +10,14 @@ on:
       - "femtodeck-c3/**"
       - "README.md"
       - "RELEASE_NOTES.md"
+      - "sim/**"
       - ".github/workflows/build-femtodeck-c3.yml"
   pull_request:
     paths:
       - "femtodeck-c3/**"
       - "README.md"
       - "RELEASE_NOTES.md"
+      - "sim/**"
       - ".github/workflows/build-femtodeck-c3.yml"
   workflow_dispatch:
 
@@ -140,6 +142,7 @@ jobs:
 
           mkdir -p site/firmware
           cp dist/femtodeck-c3/femtodeck-c3-merged.bin site/firmware/femtodeck-c3-merged.bin
+          cp -R sim site/simulator
 
           cat > site/manifest.json <<EOF
           {
@@ -199,6 +202,26 @@ jobs:
                 esp-web-install-button {
                   margin: 18px 0;
                 }
+                .actions {
+                  display: flex;
+                  flex-wrap: wrap;
+                  gap: 12px;
+                  margin: 18px 0;
+                }
+                a.button {
+                  display: inline-flex;
+                  align-items: center;
+                  min-height: 36px;
+                  padding: 0 14px;
+                  border: 1px solid #64748b;
+                  border-radius: 6px;
+                  color: #eef3ff;
+                  text-decoration: none;
+                  background: #243044;
+                }
+                a.button:hover {
+                  background: #2f3c52;
+                }
                 code {
                   background: #0b1020;
                   border: 1px solid #273244;
@@ -212,6 +235,9 @@ jobs:
                 <h1>FemtoDeck C3 Installer</h1>
                 <p>Flash FemtoDeck C3 onto an ESP32-C3 with the 0.42 inch OLED module.</p>
                 <esp-web-install-button manifest="manifest.json"></esp-web-install-button>
+                <div class="actions">
+                  <a class="button" href="simulator/">Open Simulator</a>
+                </div>
                 <ol>
                   <li>Use Chrome or Edge on desktop.</li>
                   <li>Connect the ESP32-C3 over USB.</li>

@@ -118,6 +118,12 @@ some apps without flashing the ESP32-C3 every time. It is not a perfect hardware
 emulator, but it is useful for checking menu flow, text fit, and basic gameplay
 ideas.
 
+When GitHub Pages is deployed, the simulator is available at:
+
+```text
+https://thedarkfalcon.github.io/femtodeck-esp32-c3/simulator/
+```
+
 ## Distribution
 
 GitHub Actions builds release-ready firmware on every validation run.
@@ -126,7 +132,7 @@ GitHub Actions builds release-ready firmware on every validation run.
   split binaries, and fallback flashing scripts.
 - Push a tag such as `v1.1-b44` to create a GitHub Release with the firmware zip.
 - Push to the default branch to publish the ESP Web Tools browser installer on
-  GitHub Pages.
+  GitHub Pages, including the browser simulator at `/simulator/`.
 
 The browser installer is the recommended way for most users to flash a device.
 They only need Chrome or Edge on desktop and a USB cable.
