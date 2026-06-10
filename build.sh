@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-FQBN="${1:-esp32:esp32:esp32c3}"
+FQBN="${1:-esp32:esp32:esp32c3:PartitionScheme=huge_app}"
 SKETCH="${2:-femtodeck-c3}"
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"

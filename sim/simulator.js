@@ -3,7 +3,7 @@
   const H = 40;
   const LONG_MS = 700;
   const END_LOCK_MS = 500;
-  const BUILD_TEXT = "v1.1 b44";
+  const BUILD_TEXT = "v1.1 b46";
   const READING_LINES_PER_PAGE = 3;
 
   const canvas = document.getElementById("oled");
@@ -74,8 +74,10 @@
     "/": ["001", "001", "010", "100", "100"],
     "-": ["000", "000", "111", "000", "000"],
     "<": ["001", "010", "100", "010", "001"],
+    ">": ["100", "010", "001", "010", "100"],
     "=": ["000", "111", "000", "111", "000"],
-    "$": ["111", "110", "111", "011", "111"]
+    "$": ["111", "110", "111", "011", "111"],
+    "~": ["000", "000", "011", "110", "000"]
   };
   const FONT_H = 5;
 
@@ -654,6 +656,239 @@
         gfx.text(3, 34, "Tap restart");
         gfx.text(3, 39, "Hold list");
       }
+    }
+    drawStart() { this.draw(); }
+  }
+
+  class CommunicatorSim extends Game {
+    constructor() {
+      super("Communicator");
+      this.dict = [
+        { label: "Quick", children: ["OK", "Yes", "No", "Thanks", "Done", "<3"].map((label) => ({ label })) },
+        { label: "Social", children: ["hi", "hey", "how r u", "im good", "miss u", "luv u", "cya", "gn/gm"].map((label) => ({ label })) },
+        { label: "Status", children: ["busy", "free", "later", "soon", "now", "waiting", "running late"].map((label) => ({ label })) },
+        { label: "Location", children: ["where r u", "im here", "come here", "outside", "at home", "at work"].map((label) => ({ label })) },
+        {
+          label: "Actions",
+          children: [
+            {
+              label: "bring",
+              children: [
+                { label: "drink", children: ["water", "soda", "juice", "alcohol"].map((label) => ({ label })) },
+                { label: "food", children: ["snack", "meal", "fruit"].map((label) => ({ label })) },
+                { label: "device", children: ["phone", "laptop", "charger"].map((label) => ({ label })) },
+                { label: "item", children: ["keys", "bag", "book", "pet"].map((label) => ({ label })) }
+              ]
+            },
+            { label: "get", children: ["food", "drink", "item"].map((label) => ({ label })) },
+            { label: "call", children: [{ label: "me" }] },
+            { label: "find", children: ["phone", "keys"].map((label) => ({ label })) }
+          ]
+        },
+        { label: "Statements", children: ["here", "ready", "food ready", "done", "waiting", "coming", "arrived"].map((label) => ({ label })) },
+        { label: "Alerts", children: ["urgent", "help", "problem", "call now", "emergency"].map((label) => ({ label })) },
+        { label: "Home", children: ["come eat", "clean up", "im home", "food ready", "bedtime"].map((label) => ({ label })) }
+      ];
+      this.inbox = [
+        { path: [0, 0], unread: true },
+        { path: [1, 5], unread: false }
+      ];
+      this.lastSent = null;
+    }
+    begin(now) {
+      this.start(now);
+    }
+    reset() {
+      this.mode = "send";
+      this.path = [];
+      this.index = 0;
+      this.inboxIndex = 0;
+      this.openInbox = -1;
+      this.feedback = "";
+      this.feedbackMs = 0;
+      this.clickPending = false;
+      this.clickAt = 0;
+      setLed(false);
+    }
+    currentList() {
+      let list = this.dict;
+      for (const index of this.path) {
+        const node = list[index];
+        list = node?.children || [];
+      }
+      return list;
+    }
+    nodeAt(path) {
+      let list = this.dict;
+      let node = null;
+      for (const index of path) {
+        node = list[index];
+        if (!node) return null;
+        list = node.children || [];
+      }
+      return node;
+    }
+    leaf(path) {
+      return this.nodeAt(path)?.label || "?";
+    }
+    screenTitle() {
+      if (this.mode === "inbox") return this.openInbox >= 0 ? "MESSAGE" : "INBOX";
+      return this.path.length ? this.leaf(this.path) : "SEND";
+    }
+    visibleCount() {
+      if (this.mode === "inbox") return this.inbox.length + 1;
+      return this.currentList().length + (this.path.length === 0 && this.lastSent ? 1 : 0);
+    }
+    selectedSendNode() {
+      if (this.path.length === 0 && this.lastSent && this.index === 0) return null;
+      const itemIndex = this.path.length === 0 && this.lastSent ? this.index - 1 : this.index;
+      return this.currentList()[itemIndex] || null;
+    }
+    selectedPath() {
+      const itemIndex = this.path.length === 0 && this.lastSent ? this.index - 1 : this.index;
+      return [...this.path, itemIndex];
+    }
+    update(dt, input, now) {
+      if (this.feedback) {
+        this.feedbackMs += dt * 1000;
+        if (this.feedback === "Sending" && this.feedbackMs > 280) {
+          this.feedback = "Sent";
+          this.feedbackMs = 0;
+        } else if (this.feedback !== "Sending" && this.feedbackMs > 750) {
+          this.feedback = "";
+          this.feedbackMs = 0;
+        }
+      }
+
+      let singleTap = false;
+      let doubleTap = false;
+      if (input.click) {
+        if (this.clickPending && now - this.clickAt <= 360) {
+          this.clickPending = false;
+          doubleTap = true;
+        } else {
+          this.clickPending = true;
+          this.clickAt = now;
+        }
+      }
+      if (this.clickPending && now - this.clickAt > 360) {
+        this.clickPending = false;
+        singleTap = true;
+      }
+
+      if (input.longPress) {
+        this.clickPending = false;
+        this.hold(now);
+      } else if (doubleTap) {
+        this.doubleTap();
+      } else if (singleTap) {
+        this.tap();
+      }
+    }
+    tap() {
+      if (this.feedback) return;
+      if (this.mode === "send") {
+        this.index = (this.index + 1) % Math.max(1, this.visibleCount());
+      } else if (this.openInbox < 0) {
+        this.inboxIndex = (this.inboxIndex + 1) % Math.max(1, this.visibleCount());
+      }
+    }
+    hold(now) {
+      if (this.feedback) return;
+      if (this.mode === "inbox") {
+        if (this.openInbox >= 0) return;
+        if (this.inboxIndex >= this.inbox.length) {
+          app.toMenu(now);
+          return;
+        }
+        this.openInbox = this.inboxIndex;
+        this.inbox[this.openInbox].unread = false;
+        return;
+      }
+
+      if (this.path.length === 0 && this.lastSent && this.index === 0) {
+        this.send(this.lastSent);
+        return;
+      }
+
+      const node = this.selectedSendNode();
+      if (!node) return;
+      const nextPath = this.selectedPath();
+      if (node.children?.length) {
+        this.path = nextPath;
+        this.index = 0;
+      } else {
+        this.send(nextPath);
+      }
+    }
+    doubleTap() {
+      if (this.feedback) return;
+      this.clickPending = false;
+      if (this.mode === "send") {
+        if (this.path.length) {
+          this.index = this.path.pop();
+        } else {
+          this.mode = "inbox";
+          this.inboxIndex = 0;
+        }
+      } else if (this.openInbox >= 0) {
+        this.openInbox = -1;
+      } else {
+        this.mode = "send";
+      }
+    }
+    send(path) {
+      this.lastSent = [...path];
+      this.feedback = "Sending";
+      this.feedbackMs = 0;
+      this.inbox.unshift({ path: [...path], unread: true });
+      this.inbox = this.inbox.slice(0, 8);
+      setLed(true);
+      setTimeout(() => setLed(false), 180);
+    }
+    fit(text, max = 15) {
+      const s = String(text);
+      return s.length > max ? `${s.slice(0, max - 1)}~` : s;
+    }
+    drawRows(rows, selected) {
+      const first = selected >= 5 ? selected - 4 : 0;
+      rows.slice(first, first + 5).forEach((row, i) => {
+        const y = 15 + i * 6;
+        gfx.text(3, y, first + i === selected ? ">" : " ");
+        gfx.text(10, y, this.fit(row));
+      });
+    }
+    draw() {
+      gfx.rect(0, 0, W, H);
+      gfx.text(3, 7, this.screenTitle());
+      gfx.line(1, 9, 70, 9);
+
+      if (this.feedback) {
+        gfx.center(18, this.feedback, 7);
+        if (this.lastSent) gfx.center(32, this.fit(this.leaf(this.lastSent), 12));
+        return;
+      }
+
+      if (this.mode === "send") {
+        const rows = [];
+        if (this.path.length === 0 && this.lastSent) rows.push(`Last:${this.leaf(this.lastSent)}`);
+        this.currentList().forEach((node) => rows.push(node.children?.length ? `${node.label}/` : node.label));
+        this.drawRows(rows, this.index);
+        return;
+      }
+
+      if (this.openInbox >= 0) {
+        const path = this.inbox[this.openInbox].path;
+        for (let i = 0; i < path.length; i++) {
+          gfx.text(8, 16 + i * 6, this.fit(this.leaf(path.slice(0, i + 1)), 14));
+        }
+        gfx.text(3, 38, "2tap back");
+        return;
+      }
+
+      const rows = this.inbox.map((msg) => `${msg.unread ? "!" : "<"} ${this.leaf(msg.path)}`);
+      rows.push("Exit");
+      this.drawRows(rows, this.inboxIndex);
     }
     drawStart() { this.draw(); }
   }
@@ -2252,8 +2487,10 @@
         new CounterSim(),
         new PlaceholderGame("Dice Roller"),
         new PlaceholderGame("Coin Flipper"),
+        new CommunicatorSim(),
         new PlaceholderGame("Random Number"),
         new PlaceholderGame("Metronome"),
+        new PlaceholderGame("WiFi Settings"),
         new MouseJigglerSim(),
         new ReadingSim()
       ];
@@ -2273,6 +2510,7 @@
       this.returnMenu = "root";
       this.last = performance.now();
       this.bootUntil = this.last + 2000;
+      this.applyDeepLink();
     }
     toMenu(now = performance.now()) {
       this.inMenu = true;
@@ -2283,6 +2521,24 @@
     }
     resetActive(now = performance.now()) {
       if (this.active) this.active.begin(now);
+    }
+    applyDeepLink() {
+      const params = new URLSearchParams(window.location.search);
+      const target = params.get("utility") || params.get("game") || params.get("app");
+      if (!target) return;
+
+      const key = target.toLowerCase().replace(/[^a-z0-9]/g, "");
+      const findByTitle = (apps) => apps.find((app) => app.title.toLowerCase().replace(/[^a-z0-9]/g, "") === key);
+      const utility = findByTitle(this.utilityApps);
+      const game = utility ? null : findByTitle(this.gameApps);
+      const app = utility || game;
+      if (!app) return;
+
+      this.returnMenu = utility ? "utilities" : "games";
+      this.active = app;
+      this.inMenu = false;
+      this.bootUntil = 0;
+      this.active.begin(performance.now());
     }
     tick(now) {
       const dt = Math.min(0.05, (now - this.last) / 1000);

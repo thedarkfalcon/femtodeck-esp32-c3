@@ -10,6 +10,7 @@
 #include "src/games/CityRacerGame.h"
 #include "src/apps/CountdownApp.h"
 #include "src/apps/CoinFlipperApp.h"
+#include "src/apps/CommunicatorApp.h"
 #include "src/apps/CounterApp.h"
 #include "src/apps/CreditsApp.h"
 #include "src/apps/DiceRollerApp.h"
@@ -33,6 +34,7 @@
 #include "src/apps/StopwatchApp.h"
 #include "src/games/TinyGolfGame.h"
 #include "src/games/TowerStackerGame.h"
+#include "src/apps/WiFiSetupApp.h"
 #include "Version.h"
 
 class U8G2_SSD1306_72X40_NONAME_F_HW_I2C : public U8G2 {
@@ -81,9 +83,11 @@ MouseEmulatorApp mouseEmulatorApp(APP_WIDTH, APP_HEIGHT, APP_LEFT);
 ReadingApp readingApp(APP_WIDTH, APP_HEIGHT, APP_LEFT);
 DiceRollerApp diceRollerApp(APP_WIDTH, APP_HEIGHT, APP_LEFT);
 CoinFlipperApp coinFlipperApp(APP_WIDTH, APP_HEIGHT, APP_LEFT);
+CommunicatorApp communicatorApp(APP_WIDTH, APP_HEIGHT, APP_LEFT);
 RandomNumberApp randomNumberApp(APP_WIDTH, APP_HEIGHT, APP_LEFT);
 MetronomeApp metronomeApp(APP_WIDTH, APP_HEIGHT, APP_LEFT);
 PetSimulatorApp petSimulatorApp(APP_WIDTH, APP_HEIGHT, APP_LEFT);
+WiFiSetupApp wifiSetupApp(APP_WIDTH, APP_HEIGHT, APP_LEFT);
 
 OptionsApp optionsApp(APP_WIDTH, APP_HEIGHT);
 CreditsApp creditsApp(APP_WIDTH, APP_HEIGHT);
@@ -143,8 +147,10 @@ MenuEntry utilitiesMenu[] = {
     {nullptr, MenuAction::Launch, &counterApp},
     {nullptr, MenuAction::Launch, &diceRollerApp},
     {nullptr, MenuAction::Launch, &coinFlipperApp},
+    {nullptr, MenuAction::Launch, &communicatorApp},
     {nullptr, MenuAction::Launch, &randomNumberApp},
     {nullptr, MenuAction::Launch, &metronomeApp},
+    {nullptr, MenuAction::Launch, &wifiSetupApp},
     {nullptr, MenuAction::Launch, &mouseEmulatorApp},
     {nullptr, MenuAction::Launch, &readingApp},
     {"Back", MenuAction::Back, nullptr},

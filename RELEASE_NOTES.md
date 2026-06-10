@@ -1,5 +1,19 @@
 # Release Notes
 
+## v1.1 b46
+
+- Renamed the utility to `WiFi Settings` and moved testing/deleting saved networks onto the device UI instead of the web portal.
+- Expanded WiFi storage to save up to five profiles for users who move between home, work, school, or other networks.
+- Added on-device actions to test one saved network, test all saved networks until one connects, or delete one/all saved profiles.
+- GPIO8 now stays solid when a WiFi test connects and blinks after a failed test.
+
+## v1.1 b45
+
+- Added a `WiFi Setup` utility that starts a captive portal access point for configuring saved WiFi credentials.
+- The setup portal runs at `192.168.4.1`, shows nearby networks, saves credentials to NVS, and can forget saved WiFi.
+- Added `WiFi Setup` to Utilities, Credits, simulator placeholders, and README.
+- Switched builds to the ESP32-C3 Huge APP partition scheme to fit the WiFi stack and leave room for future network apps.
+
 ## v1.1 b44
 
 - Rewrote the README around FemtoDeck C3, removed the inherited game image, and documented current build/upload flow.

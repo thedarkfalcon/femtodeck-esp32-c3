@@ -10,6 +10,8 @@ on:
       - "femtodeck-c3/**"
       - "README.md"
       - "RELEASE_NOTES.md"
+      - "build.ps1"
+      - "build.sh"
       - "sim/**"
       - ".github/workflows/build-femtodeck-c3.yml"
   pull_request:
@@ -17,6 +19,8 @@ on:
       - "femtodeck-c3/**"
       - "README.md"
       - "RELEASE_NOTES.md"
+      - "build.ps1"
+      - "build.sh"
       - "sim/**"
       - ".github/workflows/build-femtodeck-c3.yml"
   workflow_dispatch:
@@ -60,7 +64,7 @@ jobs:
         run: arduino-cli lib install U8g2 "NimBLE-Arduino"
 
       - name: Compile sketch
-        run: arduino-cli compile --export-binaries --fqbn esp32:esp32:esp32c3 femtodeck-c3
+        run: arduino-cli compile --export-binaries --fqbn esp32:esp32:esp32c3:PartitionScheme=huge_app femtodeck-c3
 
       - name: Package firmware
         id: package

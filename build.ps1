@@ -1,5 +1,5 @@
 param(
-  [string]$Fqbn = "esp32:esp32:esp32c3",
+  [string]$Fqbn = "esp32:esp32:esp32c3:PartitionScheme=huge_app",
   [string]$Sketch = "femtodeck-c3"
 )
 

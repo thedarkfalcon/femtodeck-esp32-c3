@@ -61,6 +61,7 @@ that use an LED target `GPIO8`.
 - Coin Flipper
 - Random Number
 - Metronome
+- WiFi Settings
 - Mouse Emulator
 - Reading
 - Options
@@ -78,7 +79,7 @@ arduino-cli lib install U8g2
 Compile directly:
 
 ```sh
-arduino-cli compile --fqbn esp32:esp32:esp32c3 femtodeck-c3
+arduino-cli compile --fqbn esp32:esp32:esp32c3:PartitionScheme=huge_app femtodeck-c3
 ```
 
 Or use the build helper, which increments the build number before compiling:
@@ -102,13 +103,13 @@ arduino-cli board list
 On Windows, upload to a COM port such as `COM9`:
 
 ```sh
-arduino-cli upload --fqbn esp32:esp32:esp32c3 --port COM9 femtodeck-c3
+arduino-cli upload --fqbn esp32:esp32:esp32c3:PartitionScheme=huge_app --port COM9 femtodeck-c3
 ```
 
 On macOS or Linux, use the matching `/dev/...` port:
 
 ```sh
-arduino-cli upload --fqbn esp32:esp32:esp32c3 --port /dev/ttyACM0 femtodeck-c3
+arduino-cli upload --fqbn esp32:esp32:esp32c3:PartitionScheme=huge_app --port /dev/ttyACM0 femtodeck-c3
 ```
 
 ## Browser Simulator
@@ -117,6 +118,33 @@ The `sim/` folder contains a browser-based simulator for quick iteration on
 some apps without flashing the ESP32-C3 every time. It is not a perfect hardware
 emulator, but it is useful for checking menu flow, text fit, and basic gameplay
 ideas.
+
+To run it locally from PowerShell:
+
+```powershell
+cd C:\Users\Jerry\Documents\Arduino\femtodeck-esp32-c3\sim
+python -m http.server 8765 --bind 127.0.0.1
+```
+
+Then open:
+
+```text
+http://127.0.0.1:8765/index.html
+```
+
+Some apps can be opened directly with query parameters, for example:
+
+```text
+http://127.0.0.1:8765/index.html?utility=Communicator
+```
+
+To stop the local simulator server, return to the PowerShell window running it
+and press `Ctrl+C`. If port `8765` is already in use, pick another port and use
+the matching URL:
+
+```powershell
+python -m http.server 8766 --bind 127.0.0.1
+```
 
 When GitHub Pages is deployed, the simulator is available at:
 
