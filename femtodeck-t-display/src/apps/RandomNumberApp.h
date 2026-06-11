@@ -1,7 +1,7 @@
 #pragma once
 
 #include "../../App.h"
-#include "../../../shared/logic/RandomNumberLogic.h"
+#include "../shared/logic/RandomNumberLogic.h"
 
 class RandomNumberApp : public App {
   public:

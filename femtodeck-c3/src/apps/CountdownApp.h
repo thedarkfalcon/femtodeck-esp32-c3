@@ -1,7 +1,7 @@
 #pragma once
 
 #include "../../App.h"
-#include "../../../shared/logic/CountdownLogic.h"
+#include "../shared/logic/CountdownLogic.h"
 
 class CountdownApp : public App {
   public:

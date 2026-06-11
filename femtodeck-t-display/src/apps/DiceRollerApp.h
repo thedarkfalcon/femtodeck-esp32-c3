@@ -1,7 +1,7 @@
 #pragma once
 
 #include "../../App.h"
-#include "../../../shared/logic/DiceRollerLogic.h"
+#include "../shared/logic/DiceRollerLogic.h"
 
 class DiceRollerApp : public App {
   public:

@@ -1,6 +1,6 @@
 #pragma once
 #include "../../App.h"
-#include "../../../shared/logic/CommunicatorLogic.h"
+#include "../shared/logic/CommunicatorLogic.h"
 
 class CommunicatorApp : public App {
 public:

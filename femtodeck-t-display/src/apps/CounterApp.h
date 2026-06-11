@@ -1,7 +1,7 @@
 #pragma once
 
 #include "../../App.h"
-#include "../../../shared/logic/CounterLogic.h"
+#include "../shared/logic/CounterLogic.h"
 
 class CounterApp : public App {
   public:

@@ -1,7 +1,7 @@
 #pragma once
 
 #include "../../App.h"
-#include "../../../shared/logic/MouseEmulatorLogic.h"
+#include "../shared/logic/MouseEmulatorLogic.h"
 
 class MouseEmulatorApp : public App {
   public:

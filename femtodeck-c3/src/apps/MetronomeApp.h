@@ -1,7 +1,7 @@
 #pragma once
 
 #include "../../App.h"
-#include "../../../shared/logic/MetronomeLogic.h"
+#include "../shared/logic/MetronomeLogic.h"
 
 class MetronomeApp : public App {
   public:

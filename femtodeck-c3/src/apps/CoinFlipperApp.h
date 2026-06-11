@@ -1,7 +1,7 @@
 #pragma once
 
 #include "../../App.h"
-#include "../../../shared/logic/CoinFlipperLogic.h"
+#include "../shared/logic/CoinFlipperLogic.h"
 
 class CoinFlipperApp : public App {
   public:

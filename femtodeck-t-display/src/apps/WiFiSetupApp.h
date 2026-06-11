@@ -1,6 +1,6 @@
 #pragma once
 #include "../../App.h"
-#include "../../../shared/logic/WiFiLogic.h"
+#include "../shared/logic/WiFiLogic.h"
 #include <WebServer.h>
 #include <DNSServer.h>
 

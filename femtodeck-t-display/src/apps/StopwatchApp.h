@@ -1,7 +1,7 @@
 #pragma once
 
 #include "../../App.h"
-#include "../../../shared/logic/StopwatchLogic.h"
+#include "../shared/logic/StopwatchLogic.h"
 
 class StopwatchApp : public App {
   public:
