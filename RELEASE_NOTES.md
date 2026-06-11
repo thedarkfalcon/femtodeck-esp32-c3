@@ -1,5 +1,15 @@
 # Release Notes
 
+## v2.0 b45
+
+- Major architectural overhaul to support multiple boards.
+- Introduced FemtoDeck T-Display version for ESP32 boards with 1.14" color LCDs.
+- Refactored core application logic into a shared codebase to ensure consistency between C3 and T-Display variants.
+- Ports all 25+ apps and games to the new T-Display hardware, making use of full color and higher resolution.
+- Integrated WiFi Setup and Communicator (ESP-NOW) apps from the wifi-settings branch.
+- Added dual-button navigation for T-Display hardware.
+- Updated GitHub Actions to build and package firmware for both platforms automatically.
+
 ## v1.1 b44
 
 - Rewrote the README around FemtoDeck C3, removed the inherited game image, and documented current build/upload flow.

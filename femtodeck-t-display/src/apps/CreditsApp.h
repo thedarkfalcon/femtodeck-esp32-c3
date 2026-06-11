@@ -1,0 +1,31 @@
+#pragma once
+
+#include "../../App.h"
+
+class CreditsApp : public App {
+  public:
+    CreditsApp(uint32_t width, uint32_t height);
+    bool hasCustomOverlay() const override;
+
+  protected:
+    void onAppReset() override;
+    void updateRunning(uint32_t deltaMs, const ButtonInput& b1, const ButtonInput& b2) override;
+    void drawRunning(TFT_eSPI& tft) override;
+    void drawStart(TFT_eSPI& tft) override;
+    void drawEnd(TFT_eSPI& tft) override;
+
+  private:
+    enum class Mode {
+      Select,
+      License,
+      Credits
+    };
+
+    void drawSelect(TFT_eSPI& tft);
+    void drawLicense(TFT_eSPI& tft);
+    void drawCredits(TFT_eSPI& tft);
+
+    Mode mode_ = Mode::Select;
+    uint8_t selection_ = 0;
+    uint8_t page_ = 0;
+};

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../../App.h"
+#include "../shared/logic/MetronomeLogic.h"
 
 class MetronomeApp : public App {
   public:
@@ -14,20 +15,6 @@ class MetronomeApp : public App {
     bool hasCustomOverlay() const override;
 
   private:
-    enum class Mode { Help, Bpm };
-
-    void setLed(bool on);
-    void changeBpm(int delta);
-
-    Mode mode_ = Mode::Help;
-    uint16_t bpm_ = 120;
-    uint8_t helpPage_ = 0;
-    uint16_t beatMs_ = 0;
-    uint16_t pulseMs_ = 0;
-    uint16_t adjustMs_ = 0;
-    uint32_t clockMs_ = 0;
-    uint32_t lastTapMs_ = 0;
-    bool running_ = false;
-    bool pulseOn_ = false;
-    bool holdMeansDown_ = false;
+    MetronomeLogic logic_;
+    uint32_t lastTickMs_ = 0;
 };

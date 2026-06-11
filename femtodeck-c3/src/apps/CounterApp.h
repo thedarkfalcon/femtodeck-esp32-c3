@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../../App.h"
+#include "../shared/logic/CounterLogic.h"
 
 class CounterApp : public App {
   public:
@@ -14,5 +15,5 @@ class CounterApp : public App {
     bool hasCustomOverlay() const override;
 
   private:
-    uint32_t count_ = 0;
+    CounterLogic logic_;
 };

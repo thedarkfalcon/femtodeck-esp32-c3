@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../../App.h"
+#include "../shared/logic/DiceRollerLogic.h"
 
 class DiceRollerApp : public App {
   public:
@@ -14,14 +15,5 @@ class DiceRollerApp : public App {
     bool hasCustomOverlay() const override;
 
   private:
-    enum class Mode { Select, Roll };
-
-    static const uint8_t DICE[];
-    static const uint8_t DICE_COUNT;
-
-    Mode mode_ = Mode::Select;
-    uint8_t selected_ = 1;
-    uint8_t result_ = 1;
-    uint16_t animMs_ = 0;
-    bool rolling_ = false;
+    DiceRollerLogic logic_;
 };

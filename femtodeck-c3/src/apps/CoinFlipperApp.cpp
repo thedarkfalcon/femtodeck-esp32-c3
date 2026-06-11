@@ -17,27 +17,11 @@ bool CoinFlipperApp::hasCustomOverlay() const {
 }
 
 void CoinFlipperApp::onAppReset() {
-  mode_ = Mode::Ready;
-  heads_ = true;
-  animMs_ = 0;
+  logic_.reset();
 }
 
 void CoinFlipperApp::updateRunning(uint32_t deltaMs, const ButtonInput& input) {
-  if (input.longPress) {
-    requestExitToMenu();
-    return;
-  }
-  if ((mode_ == Mode::Ready || mode_ == Mode::Result) && input.click) {
-    heads_ = random(0, 2) == 0;
-    mode_ = Mode::Flipping;
-    animMs_ = 0;
-  }
-  if (mode_ == Mode::Flipping) {
-    animMs_ += deltaMs;
-    if (animMs_ >= 750) {
-      mode_ = Mode::Result;
-    }
-  }
+  logic_.update(deltaMs, input.click, input.longPress);
 }
 
 void CoinFlipperApp::drawCoin(U8G2& u8g2, int cx, int cy, uint8_t frame) {
@@ -56,17 +40,17 @@ void CoinFlipperApp::drawRunning(U8G2& u8g2) {
   u8g2.setFont(u8g2_font_4x6_tr);
   u8g2.drawStr(3, 8, "Coin");
 
-  if (mode_ == Mode::Flipping) {
-    drawCoin(u8g2, 52, 21, (animMs_ / 110) % 3);
+  if (logic_.getMode() == CoinFlipperLogic::Mode::Flipping) {
+    drawCoin(u8g2, 52, 21, (logic_.getAnimMs() / 110) % 3);
     u8g2.drawStr(3, 22, "Flip");
     return;
   }
 
   u8g2.drawCircle(52, 21, 12);
-  if (mode_ == Mode::Ready) {
+  if (logic_.getMode() == CoinFlipperLogic::Mode::Ready) {
     u8g2.setFont(u8g2_font_5x8_tr);
     u8g2.drawStr(10, 24, "Tap");
-  } else if (heads_) {
+  } else if (logic_.isHeads()) {
     u8g2.drawCircle(52, 18, 3);
     u8g2.drawLine(47, 24, 57, 24);
     u8g2.drawLine(49, 13, 51, 10);

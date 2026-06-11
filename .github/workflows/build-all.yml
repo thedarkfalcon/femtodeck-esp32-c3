@@ -1,0 +1,152 @@
+name: Build FemtoDeck
+
+on:
+  push:
+    branches:
+      - "**"
+    tags:
+      - "v*"
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+jobs:
+  compile:
+    strategy:
+      matrix:
+        include:
+          - board: femtodeck-c3
+            fqbn: esp32:esp32:esp32c3
+            chip: esp32c3
+          - board: femtodeck-t-display
+            fqbn: esp32:esp32:esp32
+            chip: esp32
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup arduino-cli
+        uses: arduino/setup-arduino-cli@v2
+
+      - name: Configure board manager URLs
+        run: arduino-cli config init --overwrite && arduino-cli config set board_manager.additional_urls https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json
+
+      - name: Install ESP32 core
+        run: arduino-cli core update-index && arduino-cli core install esp32:esp32
+
+      - name: Install libraries
+        run: arduino-cli lib install U8g2 "NimBLE-Arduino" "TFT_eSPI"
+
+      - name: Compile sketch
+        run: arduino-cli compile --export-binaries --fqbn ${{ matrix.fqbn }} ${{ matrix.board }}
+
+      - name: Package firmware
+        id: package
+        shell: bash
+        run: |
+          set -euo pipefail
+          firmware_dir="dist/${{ matrix.board }}"
+          mkdir -p "$firmware_dir"
+
+          # Use find to locate build artifacts and copy them to dist
+          find ${{ matrix.board }}/build -name "*.bin" -exec cp {} "$firmware_dir/" \;
+
+          # Find the merged binary specifically if it exists (C3 core often generates it)
+          merged_bin=$(find ${{ matrix.board }}/build -name "*.merged.bin" | head -n 1)
+          if [[ -n "$merged_bin" ]]; then
+            cp "$merged_bin" "$firmware_dir/${{ matrix.board }}-merged.bin"
+          fi
+
+          build_text="$(sed -nE 's/.*BUILD_TEXT = "([^"]+)".*/\1/p' ${{ matrix.board }}/Version.h)"
+          if [[ -z "$build_text" ]]; then
+            build_text="local-build"
+          fi
+
+          # Create flashing scripts
+          if [[ "${{ matrix.chip }}" == "esp32c3" ]]; then
+            cat > "$firmware_dir/flash-windows.bat" <<EOF
+            @echo off
+            python -m pip install --upgrade esptool
+            python -m esptool --chip esp32c3 --port %1 --baud 460800 write_flash -z 0x0 ${{ matrix.board }}-merged.bin
+EOF
+          else
+            cat > "$firmware_dir/flash-windows.bat" <<EOF
+            @echo off
+            python -m pip install --upgrade esptool
+            python -m esptool --chip esp32 --port %1 --baud 460800 write_flash -z 0x10000 ${{ matrix.board }}.ino.bin
+EOF
+          fi
+
+          echo "build_text=$build_text" >> "$GITHUB_OUTPUT"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.board }}-firmware
+          path: dist/${{ matrix.board }}/**
+
+  deploy-site:
+    needs: compile
+    runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: site/firmware
+
+      - name: Build site
+        run: |
+          mkdir -p site
+          cp -R sim site/simulator
+
+          cat > site/manifest.json <<EOF
+          {
+            "name": "FemtoDeck",
+            "builds": [
+              {
+                "chipFamily": "ESP32-C3",
+                "parts": [
+                  { "path": "firmware/femtodeck-c3-firmware/femtodeck-c3-merged.bin", "offset": 0 }
+                ]
+              },
+              {
+                "chipFamily": "ESP32",
+                "parts": [
+                  { "path": "firmware/femtodeck-t-display-firmware/femtodeck-t-display.ino.bin", "offset": 65536 }
+                ]
+              }
+            ]
+          }
+          EOF
+
+          # Basic index.html for flashing
+          cat > site/index.html <<'EOF'
+          <!doctype html>
+          <html>
+            <head><title>FemtoDeck Installer</title><script type="module" src="https://unpkg.com/esp-web-tools@10/dist/web/install-button.js"></script></head>
+            <body>
+              <h1>FemtoDeck Multi-Board Installer</h1>
+              <p>Select your board and click Install.</p>
+              <esp-web-install-button manifest="manifest.json"></esp-web-install-button>
+              <br><br>
+              <a href="simulator/">Open C3 Simulator</a>
+            </body>
+          </html>
+EOF
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+      - name: Deploy to GitHub Pages
+        uses: actions/deploy-pages@v4
