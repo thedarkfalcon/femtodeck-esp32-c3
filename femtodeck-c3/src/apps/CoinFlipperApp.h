@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../../App.h"
+#include "../shared/logic/CoinFlipperLogic.h"
 
 class CoinFlipperApp : public App {
   public:
@@ -14,11 +15,7 @@ class CoinFlipperApp : public App {
     bool hasCustomOverlay() const override;
 
   private:
-    enum class Mode { Ready, Flipping, Result };
-
     void drawCoin(U8G2& u8g2, int cx, int cy, uint8_t frame);
 
-    Mode mode_ = Mode::Ready;
-    bool heads_ = true;
-    uint16_t animMs_ = 0;
+    CoinFlipperLogic logic_;
 };

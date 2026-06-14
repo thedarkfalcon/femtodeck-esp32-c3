@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../../App.h"
+#include "../shared/logic/MouseEmulatorLogic.h"
 
 class MouseEmulatorApp : public App {
   public:
@@ -16,19 +17,7 @@ class MouseEmulatorApp : public App {
   private:
     void sendHumanizedStep();
 
-    uint32_t targetIntervalMs_ = 0;
-    uint32_t lastJiggleTime_ = 0;
+    MouseEmulatorLogic logic_;
     uint32_t lastClockUpdate_ = 0;
-    bool jigglerEnabled_ = true;
-    bool isMoving_ = false;
-
-    enum MovePhase { Idle = 0, Forward = 1, Waiting = 2, Back = 3 };
-    MovePhase phase_ = Idle;
-    int movementTotal_ = 0;      // total pixels to move this cycle
-    int remainingSteps_ = 0;     // steps left in current direction
-    int movementDirection_ = 1;  // 1 or -1
-    uint32_t waitUntilMs_ = 0;   // when to start the next phase (between forward/back)
-    int stepsPerTick_ = 30;      // number of micro-steps to send per tick
-    int verticalOffset_ = 0;      // bounded wiggle offset so the cursor does not drift away
-    int verticalJitterCountdown_ = 0;
+    int stepsPerTick_ = 30;
 };

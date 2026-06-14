@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../../App.h"
+#include "../shared/logic/StopwatchLogic.h"
 
 class StopwatchApp : public App {
   public:
@@ -14,6 +15,5 @@ class StopwatchApp : public App {
     bool hasCustomOverlay() const override;
 
   private:
-    bool running_ = false;
-    uint32_t elapsedMs_ = 0;
+    StopwatchLogic logic_;
 };

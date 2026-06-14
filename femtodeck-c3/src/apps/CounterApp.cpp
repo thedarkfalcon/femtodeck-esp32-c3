@@ -3,21 +3,21 @@
 #include <U8g2lib.h>
 
 CounterApp::CounterApp(uint32_t width, uint32_t height, uint32_t left)
-    : App("Counter", width, height), count_(0) {}
+    : App("Counter", width, height) {}
 
 void CounterApp::onAppReset() {
-  count_ = 0;
+  logic_.reset();
 }
 
 void CounterApp::updateRunning(uint32_t deltaMs, const ButtonInput& input) {
   (void)deltaMs;
   if (input.click) {
     // increment on tap
-    count_++;
+    logic_.increment();
   }
   if (input.longPress) {
     // reset on hold (do not exit to menu)
-    count_ = 0;
+    logic_.reset();
   }
 }
 
@@ -25,7 +25,7 @@ void CounterApp::drawRunning(U8G2& u8g2) {
   u8g2.drawFrame(0, 0, width + 2, height);
 
   char buf[16];
-  snprintf(buf, sizeof(buf), "%u", (unsigned)count_);
+  snprintf(buf, sizeof(buf), "%u", (unsigned)logic_.getCount());
 
   u8g2.setFont(u8g2_font_7x13_tr);
   int textW = u8g2.getStrWidth(buf);

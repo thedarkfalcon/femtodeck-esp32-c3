@@ -3,7 +3,7 @@
   const H = 40;
   const LONG_MS = 700;
   const END_LOCK_MS = 500;
-  const BUILD_TEXT = "v1.1 b44";
+  const BUILD_TEXT = "v2.0 b64";
   const READING_LINES_PER_PAGE = 3;
 
   const canvas = document.getElementById("oled");

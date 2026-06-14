@@ -48,6 +48,7 @@ class BlackjackGame : public App {
     void addPlayerCard();
     void addDealerCard();
     uint8_t handValue(const uint8_t* cards, uint8_t count) const;
+    bool isNaturalBlackjack(const uint8_t* cards, uint8_t count) const;
     void cycleBet();
     void stand();
     void settleRound();

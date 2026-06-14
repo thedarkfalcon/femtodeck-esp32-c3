@@ -42,9 +42,9 @@ void BlackjackGame::updateRunning(uint32_t deltaMs, const ButtonInput& input) {
       if (bankroll_ <= 0) {
         endApp();
       } else if (input.click) {
-        cycleBet();
-      } else if (input.longPress) {
         startDeal();
+      } else if (input.longPress) {
+        cycleBet();
       }
       break;
 
@@ -112,7 +112,7 @@ void BlackjackGame::drawRunning(U8G2& u8g2) {
     u8g2.setCursor(left_ + 2, 29);
     u8g2.print(deckRemaining_);
     u8g2.print(" cards");
-    u8g2.drawStr(left_ + 2, 38, "Tap bet Hold deal");
+    u8g2.drawStr(left_ + 2, 38, "Tap deal Hold bet");
     return;
   }
 
@@ -257,8 +257,20 @@ void BlackjackGame::updateDeal(uint32_t deltaMs) {
   }
   dealStep_++;
   if (dealStep_ >= 4) {
-    if (handValue(playerCards_, playerCount_) == 21) {
-      stand();
+    const bool playerNatural = isNaturalBlackjack(playerCards_, playerCount_);
+    const bool dealerNatural = isNaturalBlackjack(dealerCards_, dealerCount_);
+    if (playerNatural || dealerNatural) {
+      if (playerNatural && dealerNatural) {
+        result_ = RoundResult::Push;
+      } else if (playerNatural) {
+        result_ = RoundResult::Blackjack;
+        bankroll_ += (bet_ * 3) / 2;
+      } else {
+        result_ = RoundResult::Lose;
+        bankroll_ -= bet_;
+      }
+      saveBestIfNeeded();
+      handState_ = HandState::RoundOver;
     } else {
       handState_ = HandState::PlayerTurn;
     }
@@ -337,6 +349,10 @@ uint8_t BlackjackGame::handValue(const uint8_t* cards, uint8_t count) const {
   return total;
 }
 
+bool BlackjackGame::isNaturalBlackjack(const uint8_t* cards, uint8_t count) const {
+  return count == 2 && handValue(cards, count) == 21;
+}
+
 void BlackjackGame::cycleBet() {
   const int16_t options[] = {10, 20, 30, 50};
   for (uint8_t i = 0; i < 4; i++) {
@@ -361,8 +377,8 @@ void BlackjackGame::settleRound() {
       result_ = RoundResult::Bust;
       bankroll_ -= bet_;
     } else if (dealer > 21 || player > dealer) {
-      result_ = player == 21 && playerCount_ == 2 ? RoundResult::Blackjack : RoundResult::Win;
-      bankroll_ += result_ == RoundResult::Blackjack ? bet_ + (bet_ / 2) : bet_;
+      result_ = isNaturalBlackjack(playerCards_, playerCount_) ? RoundResult::Blackjack : RoundResult::Win;
+      bankroll_ += result_ == RoundResult::Blackjack ? (bet_ * 3) / 2 : bet_;
     } else if (player == dealer) {
       result_ = RoundResult::Push;
     } else {
@@ -423,7 +439,7 @@ const char* BlackjackGame::resultText() const {
     case RoundResult::Bust:
       return "Bust Tap next";
     case RoundResult::Blackjack:
-      return "Blackjack!";
+      return "Blackjack 3:2";
     case RoundResult::None:
     default:
       return "";
