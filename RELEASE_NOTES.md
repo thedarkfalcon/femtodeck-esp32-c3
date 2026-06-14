@@ -1,5 +1,28 @@
 # Release Notes
 
+## v2.0 b67
+
+- Added a T-Display debug autolaunch preference so the firmware can boot straight into a named app for serial profiling.
+- Added serial debug commands for listing launchable apps, setting/clearing autolaunch, launching an app, and starting/stopping Femto Miner.
+- Added Femto Miner serial stats output once per second while mining, including state, hashrate, totals, shares, uptime, pool, and last error.
+- Added a persisted Femto Miner autostart flag for benchmarking, plus B2-at-boot autolaunch suppression as a recovery path.
+
+## v2.0 b66
+
+- Reworked Femto Miner hashing to use NerdMiner's baked SHA path instead of generic per-hash mbedTLS setup.
+- Added a classic ESP32 hardware-SHA fast path for T-Display mining, matching NerdMiner's SHA peripheral approach much more closely.
+- Batched Femto Miner hash stats updates so the worker no longer enters a critical section for every nonce.
+- Fixed T-Display Femto Miner page ghosting by forcing landscape rotation before rendering/pushing the miner dashboard sprite.
+
+## v2.0 b65
+
+- Added Femto Miner as a native utility on both T-Display and C3, with shared miner settings, worker-name generation, Stratum connection handling, cooperative SHA mining loop, and live status stats.
+- Added a dedicated Femto Miner setup portal for wallet, pool host, port, and pool password settings, using `FemtoMiner Setup` instead of replacing the existing WiFi Setup flow.
+- Added on-device Miner settings reset screens on both board targets.
+- Added Miner settings to Save Manager and documented the default pool, wallet, worker naming, and NerdMiner_v2 MIT attribution.
+- Added ArduinoJson to the documented and CI-installed Arduino library dependencies for Stratum message parsing.
+- Added the `onAppExit()` lifecycle hook so apps with background workers, sockets, APs, or radio sessions can stop cleanly when exiting to the menu.
+
 ## v2.0 b64
 
 - Reworked T-Display Breakout '76 running rendering to use an 8-bit sprite framebuffer, reducing visible full-screen tearing during play.

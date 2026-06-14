@@ -40,7 +40,7 @@ jobs:
         run: arduino-cli core update-index && arduino-cli core install esp32:esp32
 
       - name: Install libraries
-        run: arduino-cli lib install U8g2 "NimBLE-Arduino" "TFT_eSPI"
+        run: arduino-cli lib install U8g2 "NimBLE-Arduino" "TFT_eSPI" ArduinoJson
 
       - name: Compile sketch
         run: arduino-cli compile --export-binaries --fqbn ${{ matrix.fqbn }} ${{ matrix.board }}

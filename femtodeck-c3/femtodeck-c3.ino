@@ -17,6 +17,7 @@
 #include "src/apps/DiceRollerApp.h"
 #include "src/apps/EspContactsApp.h"
 #include "src/games/FemtoFieldGame.h"
+#include "src/apps/FemtoMinerApp.h"
 #include "src/games/FishingFlickGame.h"
 #include "src/games/KnifeThrowGame.h"
 #include "src/games/MazeRunnerGame.h"
@@ -79,6 +80,7 @@ SimonGame simonGame(APP_WIDTH, APP_HEIGHT, APP_LEFT);
 
 StopwatchApp stopwatchApp(APP_WIDTH, APP_HEIGHT, APP_LEFT);
 ClockApp clockApp(APP_WIDTH, APP_HEIGHT, APP_LEFT);
+FemtoMinerApp femtoMinerApp(APP_WIDTH, APP_HEIGHT, APP_LEFT);
 CountdownApp countdownApp(APP_WIDTH, APP_HEIGHT, APP_LEFT);
 CounterApp counterApp(APP_WIDTH, APP_HEIGHT, APP_LEFT);
 MouseEmulatorApp mouseEmulatorApp(APP_WIDTH, APP_HEIGHT, APP_LEFT);
@@ -152,6 +154,7 @@ MenuEntry utilitiesMenu[] = {
     {nullptr, MenuAction::Launch, &coinFlipperApp},
     {nullptr, MenuAction::Launch, &randomNumberApp},
     {nullptr, MenuAction::Launch, &metronomeApp},
+    {nullptr, MenuAction::Launch, &femtoMinerApp},
     {nullptr, MenuAction::Launch, &espContactsApp},
     {nullptr, MenuAction::Launch, &communicatorApp},
     {nullptr, MenuAction::Launch, &mouseEmulatorApp},

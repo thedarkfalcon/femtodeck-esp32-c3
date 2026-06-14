@@ -69,6 +69,7 @@ class App {
         virtual void drawStart(U8G2& u8g2);
         virtual void drawEnd(U8G2& u8g2);
         virtual bool startsRunningImmediately() const;
+        virtual void onAppExit();
 
     private:
         void startRunning();

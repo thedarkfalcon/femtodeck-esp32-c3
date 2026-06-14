@@ -90,7 +90,7 @@ void App::tick(uint32_t nowMs, bool buttonDown) {
                 break;
             }
             if (input.longPress) {
-                exitToMenuRequested_ = true;
+                requestExitToMenu();
                 phase_ = AppPhase::Start;
                 phaseStartedAtMs_ = nowMs;
             } else if (input.click) {
@@ -151,6 +151,9 @@ void App::endApp() {
 }
 
 void App::requestExitToMenu() {
+    if (!exitToMenuRequested_) {
+        onAppExit();
+    }
     exitToMenuRequested_ = true;
 }
 
@@ -167,6 +170,8 @@ void App::drawEnd(U8G2& u8g2) {
 bool App::startsRunningImmediately() const {
     return false;
 }
+
+void App::onAppExit() {}
 
 void App::startRunning() {
     appEnded_ = false;

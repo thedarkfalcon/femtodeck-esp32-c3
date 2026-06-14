@@ -72,6 +72,7 @@ class App {
         virtual void drawEnd(TFT_eSPI& tft);
         virtual bool startsRunningImmediately() const;
         virtual bool consumesButton2HoldInRunning() const;
+        virtual void onAppExit();
 
     private:
         void startRunning();

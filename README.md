@@ -42,10 +42,25 @@ Radio-capable utilities:
 - **WiFi Setup** stores multiple WiFi networks from a captive portal, then lets the device test or delete saved networks from the settings app.
 - **ESP Contacts** manages a shared ESP-NOW contact list. Use **Listen for Contacts** to save nearby FemtoDeck devices, **Send My Contact** to broadcast your saved initials, and **Manage Contacts** to remove saved peers.
 - **Communicator** sends predefined ESP-NOW messages. Messages use compact dictionary path IDs rather than full strings, then the receiver maps the path back to local text. After choosing a message, select **ALL** or a saved contact. Incoming messages are shown only when addressed to **ALL** or to this device's saved initials.
+- **Femto Miner** is a small solo mining utility with a dedicated setup portal for wallet and pool settings. It reuses saved FemtoDeck WiFi profiles and defaults to `public-pool.io`.
 
 The communicator packet has a small magic header (`FC`) and a protocol version so FemtoDeck devices can reject unrelated ESP-NOW traffic. It also carries the sender initials, recipient initials, and firmware build number. If a received message comes from a different FemtoDeck build, the app still shows the message but marks it with a version warning.
 
 Contact data is stored separately from game scores. The **Options / Save Manager** screen includes a **Contacts** entry for clearing the saved ESP-NOW contact list, and **Delete All** also clears it.
+
+### Femto Miner Setup
+
+Femto Miner is configured separately from WiFi. First add one or more WiFi networks in **WiFi Setup**, then open **Femto Miner** and launch its setup portal.
+
+Default miner settings:
+
+- Pool: `public-pool.io`
+- Port: `21496`
+- Password: `x`
+- Worker: `Femto<MACADDRESS>`, for example `Femto001A2B3C4D5E`
+- Stratum username: `<wallet>.<worker>`
+
+The setup portal SSID is `FemtoMiner Setup` with password `femtominer`. It saves wallet, pool host, pool port, and pool password into the `miner` preferences namespace. The **Options / Save Manager** screen includes a **Miner** entry for clearing these settings.
 
 ## Build
 
@@ -53,7 +68,7 @@ Install the ESP32 core and required libraries:
 
 ```sh
 arduino-cli core install esp32:esp32
-arduino-cli lib install U8g2 "NimBLE-Arduino" "TFT_eSPI"
+arduino-cli lib install U8g2 "NimBLE-Arduino" "TFT_eSPI" ArduinoJson
 ```
 
 ### Compile for ESP32-C3:
@@ -80,3 +95,5 @@ The browser installer supports both board types and is the recommended way for m
 ## License
 
 FemtoDeck is released under WTFPL + No Warranty Disclaimer. See `LICENSE` for the full terms.
+
+Femto Miner includes MIT-attributed mining/Stratum logic adapted from NerdMiner_v2. See `licenses/NerdMiner_v2-MIT.txt`.

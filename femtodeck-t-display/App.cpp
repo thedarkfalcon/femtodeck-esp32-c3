@@ -161,6 +161,9 @@ void App::endApp() {
 }
 
 void App::requestExitToMenu() {
+    if (!exitToMenuRequested_) {
+        onAppExit();
+    }
     exitToMenuRequested_ = true;
 }
 
@@ -181,6 +184,8 @@ bool App::startsRunningImmediately() const {
 bool App::consumesButton2HoldInRunning() const {
     return false;
 }
+
+void App::onAppExit() {}
 
 void App::startRunning() {
     appEnded_ = false;

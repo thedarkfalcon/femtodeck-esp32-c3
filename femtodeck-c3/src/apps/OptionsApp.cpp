@@ -34,6 +34,7 @@ const SaveEntry SAVE_ENTRIES[] = {
     {"Simon", "simon"},
     {"Pet", "pet"},
     {"Clock", "clock"},
+    {"Miner", "miner"},
     {"Contacts", "contacts"},
 };
 
