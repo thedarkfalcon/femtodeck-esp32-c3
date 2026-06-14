@@ -1,4 +1,5 @@
 #include "DiceRollerApp.h"
+#include "../../TDisplayUi.h"
 #include <TFT_eSPI.h>
 
 DiceRollerApp::DiceRollerApp(uint32_t width, uint32_t height)
@@ -6,55 +7,72 @@ DiceRollerApp::DiceRollerApp(uint32_t width, uint32_t height)
 
 void DiceRollerApp::onAppReset() {
   logic_.reset();
+  dirty_ = true;
+  renderedRollFrame_ = UINT16_MAX;
 }
 
 void DiceRollerApp::updateRunning(uint32_t deltaMs, const ButtonInput& b1, const ButtonInput& b2) {
-  logic_.update(deltaMs, b1.click, b1.longPress);
-}
-
-void DiceRollerApp::drawRunning(TFT_eSPI& tft) {
-  tft.fillScreen(TFT_BLACK);
-  tft.setTextSize(2);
-  tft.setTextColor(TFT_WHITE);
-
-  if (logic_.getMode() == DiceRollerLogic::Mode::Select) {
-    tft.drawString("Select Die:", 10, 10);
-    tft.setTextSize(4);
-    tft.setTextColor(TFT_CYAN);
-    String die = "d" + String(logic_.getSelectedDice());
-    tft.drawString(die, (240 - tft.textWidth(die)) / 2, 50);
-    tft.setTextSize(1);
-    tft.setTextColor(TFT_WHITE);
-    tft.drawString("Tap: Next, Hold: Roll", 10, 110);
-  } else {
-    String die = "d" + String(logic_.getSelectedDice());
-    tft.drawString(die, 10, 10);
-
-    if (logic_.isRolling()) {
-      tft.setTextSize(4);
-      tft.setTextColor(TFT_YELLOW);
-      String val = String(random(1, logic_.getSelectedDice() + 1));
-      tft.drawString(val, (240 - tft.textWidth(val)) / 2, 50);
-    } else {
-      tft.setTextSize(5);
-      tft.setTextColor(TFT_GREEN);
-      String val = String(logic_.getResult());
-      tft.drawString(val, (240 - tft.textWidth(val)) / 2, 45);
-      tft.setTextSize(1);
-      tft.setTextColor(TFT_WHITE);
-      tft.drawString("Tap/Hold: Back", 10, 110);
-    }
+  const auto oldMode = logic_.getMode();
+  const uint8_t oldDie = logic_.getSelectedDice();
+  const uint8_t oldResult = logic_.getResult();
+  const bool oldRolling = logic_.isRolling();
+  logic_.update(deltaMs, b1.click || b2.click, b1.longPress);
+  if (oldMode != logic_.getMode() || oldDie != logic_.getSelectedDice() ||
+      oldResult != logic_.getResult() || oldRolling != logic_.isRolling()) {
+    dirty_ = true;
   }
 }
 
+void DiceRollerApp::drawRunning(TFT_eSPI& tft) {
+  if (logic_.getMode() == DiceRollerLogic::Mode::Select) {
+    if (!dirty_ && renderedMode_ == logic_.getMode() && renderedDie_ == logic_.getSelectedDice()) {
+      return;
+    }
+    TDisplayUi::clear(tft);
+    TDisplayUi::header(tft, "Dice Roller", TFT_CYAN, "SELECT");
+    String die = "d" + String(logic_.getSelectedDice());
+    TDisplayUi::largeValue(tft, die, 52, TFT_CYAN);
+    TDisplayUi::footer(tft, "B1 next die / B1 hold roll");
+  } else {
+    String die = "d" + String(logic_.getSelectedDice());
+
+    if (logic_.isRolling()) {
+      const uint16_t frame = logic_.getAnimMs() / 90;
+      if (!dirty_ && renderedRollFrame_ == frame) {
+        return;
+      }
+      if (dirty_ || renderedMode_ != logic_.getMode()) {
+        TDisplayUi::clear(tft);
+        TDisplayUi::header(tft, "Dice Roller", TFT_YELLOW, die.c_str());
+        TDisplayUi::footer(tft, "Rolling...");
+      }
+      tft.fillRect(0, 45, width, 55, TFT_BLACK);
+      String val = String(random(1, logic_.getSelectedDice() + 1));
+      TDisplayUi::largeValue(tft, val, 52, TFT_YELLOW);
+      renderedRollFrame_ = frame;
+    } else {
+      if (!dirty_ && renderedMode_ == logic_.getMode() && renderedResult_ == logic_.getResult()) {
+        return;
+      }
+      TDisplayUi::clear(tft);
+      TDisplayUi::header(tft, "Dice Roller", TFT_GREEN, die.c_str());
+      String val = String(logic_.getResult());
+      TDisplayUi::largeValue(tft, val, 48, TFT_GREEN);
+      TDisplayUi::footer(tft, "B1 roll again / B1 hold dice select");
+    }
+  }
+  renderedMode_ = logic_.getMode();
+  renderedDie_ = logic_.getSelectedDice();
+  renderedResult_ = logic_.getResult();
+  dirty_ = false;
+}
+
 void DiceRollerApp::drawStart(TFT_eSPI& tft) {
-  tft.fillScreen(TFT_BLACK);
-  tft.setTextColor(TFT_CYAN);
-  tft.setTextSize(3);
-  tft.drawString("Dice Roller", 40, 40);
-  tft.setTextSize(1);
-  tft.setTextColor(TFT_WHITE);
-  tft.drawString("Press Button 1 to Start", 60, 90);
+  TDisplayUi::clear(tft);
+  TDisplayUi::header(tft, "Dice Roller", TFT_CYAN);
+  TDisplayUi::centered(tft, "d4 d6 d8", 44, 2, TFT_WHITE);
+  TDisplayUi::centered(tft, "d10 d12 d20 d100", 72, 2, TFT_CYAN);
+  TDisplayUi::footer(tft, "B1 start");
 }
 
 bool DiceRollerApp::hasCustomOverlay() const { return true; }

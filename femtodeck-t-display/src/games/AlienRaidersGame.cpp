@@ -5,9 +5,56 @@
 #include <TFT_eSPI.h>
 
 #include "../../PlayerProfile.h"
-
 namespace {
 Preferences alienPrefs;
+constexpr uint8_t PORTRAIT_ROTATION = 0;
+constexpr int PORTRAIT_W = 135;
+constexpr int PORTRAIT_H = 240;
+constexpr int HUD_H = 27;
+constexpr int SHIP_Y = 196;
+constexpr int LANE_LEFT = 30;
+constexpr int LANE_STEP = 38;
+constexpr int PLAY_TOP = 31;
+constexpr int PLAY_BOTTOM = 226;
+constexpr float BOSS_SPEED = 7.0f;
+constexpr float BOSS_TOP_Y = PLAY_TOP + 8.0f;
+constexpr float BOSS_BOTTOM_Y = SHIP_Y - 52.0f;
+
+void setPortrait(TFT_eSPI& tft) {
+  tft.setRotation(PORTRAIT_ROTATION);
+}
+
+void clearPortrait(TFT_eSPI& tft) {
+  setPortrait(tft);
+  tft.fillScreen(TFT_BLACK);
+  tft.setTextDatum(TL_DATUM);
+}
+
+void drawPortraitHeader(TFT_eSPI& tft, const char* title, uint16_t color, const String& stat = String()) {
+  tft.fillRect(0, 0, PORTRAIT_W, HUD_H, TFT_BLACK);
+  tft.setTextSize(1);
+  tft.setTextColor(color, TFT_BLACK);
+  tft.drawString(title, 5, 6);
+  if (stat.length() > 0) {
+    tft.setTextColor(TFT_LIGHTGREY, TFT_BLACK);
+    tft.drawString(stat, PORTRAIT_W - tft.textWidth(stat) - 5, 6);
+  }
+  tft.drawFastHLine(0, HUD_H - 1, PORTRAIT_W, TFT_DARKGREY);
+}
+
+void drawPortraitFooter(TFT_eSPI& tft, const char* text) {
+  tft.fillRect(0, PORTRAIT_H - 17, PORTRAIT_W, 17, TFT_BLACK);
+  tft.drawFastHLine(0, PORTRAIT_H - 18, PORTRAIT_W, TFT_DARKGREY);
+  tft.setTextSize(1);
+  tft.setTextColor(TFT_LIGHTGREY, TFT_BLACK);
+  tft.drawString(text, 5, PORTRAIT_H - 13);
+}
+
+void drawCentered(TFT_eSPI& tft, const String& text, int y, uint8_t size, uint16_t color) {
+  tft.setTextSize(size);
+  tft.setTextColor(color, TFT_BLACK);
+  tft.drawString(text, (PORTRAIT_W - tft.textWidth(text)) / 2, y);
+}
 }
 
 AlienRaidersGame::AlienRaidersGame(uint32_t width, uint32_t height)
@@ -32,6 +79,7 @@ void AlienRaidersGame::onAppReset() {
   introActive_ = true;
   bossActive_ = false;
   spreadShotToggle_ = false;
+  bossDirection_ = 1;
   score_ = 0;
   for (uint8_t i = 0; i < ENEMIES; i++) enemies_[i].active = false;
   for (uint8_t i = 0; i < SHOTS; i++) shots_[i].active = false;
@@ -52,7 +100,8 @@ void AlienRaidersGame::updateRunning(uint32_t deltaMs, const ButtonInput& b1, co
     return;
   }
 
-  if (b1.click) shipLane_ = (shipLane_ + 1) % LANES;
+  if (b1.click) shipLane_ = (shipLane_ + LANES - 1) % LANES;
+  if (b2.click) shipLane_ = (shipLane_ + 1) % LANES;
 
   if (rapidMs_ > 0) rapidMs_ = deltaMs >= rapidMs_ ? 0 : rapidMs_ - deltaMs;
   if (spreadMs_ > 0) spreadMs_ = deltaMs >= spreadMs_ ? 0 : spreadMs_ - deltaMs;
@@ -98,13 +147,21 @@ void AlienRaidersGame::updateRunning(uint32_t deltaMs, const ButtonInput& b1, co
 
   for (uint8_t i = 0; i < ENEMIES; i++) {
     if (!enemies_[i].active) continue;
-    const float base = enemies_[i].boss ? 5.5f : 17.0f + min<uint16_t>(20, score_ / 4);
-    enemies_[i].x -= (base - (enemies_[i].boss ? 0.0f : (enemies_[i].maxHp - 1) * 3.0f)) * dt;
-    if (enemies_[i].x < 5.0f) {
-      if (enemies_[i].boss) {
-        bossActive_ = false;
-        nextBossScore_ += 100;
+    if (enemies_[i].boss) {
+      enemies_[i].x += BOSS_SPEED * static_cast<float>(bossDirection_) * dt;
+      if (enemies_[i].x >= BOSS_BOTTOM_Y) {
+        enemies_[i].x = BOSS_BOTTOM_Y;
+        bossDirection_ = -1;
+      } else if (enemies_[i].x <= BOSS_TOP_Y) {
+        enemies_[i].x = BOSS_TOP_Y;
+        bossDirection_ = 1;
       }
+      continue;
+    }
+
+    const float base = 50.0f + min<uint16_t>(45, score_ / 3);
+    enemies_[i].x += (base - (enemies_[i].maxHp - 1) * 5.0f) * dt;
+    if (enemies_[i].x > SHIP_Y + 18.0f) {
       enemies_[i].active = false;
       loseHealth();
     }
@@ -112,32 +169,31 @@ void AlienRaidersGame::updateRunning(uint32_t deltaMs, const ButtonInput& b1, co
 
   for (uint8_t i = 0; i < SHOTS; i++) {
     if (!shots_[i].active) continue;
-    shots_[i].x += 45.0f * dt;
-    shots_[i].lane += shots_[i].dy;
-    shots_[i].y += static_cast<float>(shots_[i].dy) * 7.0f * dt;
-    if (shots_[i].x > width || shots_[i].y < 2 || shots_[i].y > height - 2) shots_[i].active = false;
+    shots_[i].y -= 165.0f * dt;
+    shots_[i].x += static_cast<float>(shots_[i].dy) * 34.0f * dt;
+    if (shots_[i].y < PLAY_TOP || shots_[i].x < 0.0f || shots_[i].x > PORTRAIT_W) shots_[i].active = false;
   }
 
   for (uint8_t i = 0; i < ENEMY_SHOTS; i++) {
     if (!enemyShots_[i].active) continue;
-    enemyShots_[i].x -= 34.0f * dt;
-    enemyShots_[i].y += static_cast<float>(enemyShots_[i].dy) * 6.0f * dt;
-    if (enemyShots_[i].x < 8.0f && enemyShots_[i].x > 1.0f &&
-        abs(static_cast<int>(enemyShots_[i].y) - laneY(shipLane_)) <= 4) {
+    enemyShots_[i].y += 96.0f * dt;
+    enemyShots_[i].x += static_cast<float>(enemyShots_[i].dy) * 28.0f * dt;
+    if (enemyShots_[i].y > SHIP_Y - 14.0f && enemyShots_[i].y < SHIP_Y + 15.0f &&
+        abs(static_cast<int>(enemyShots_[i].x) - laneX(shipLane_)) <= 11) {
       enemyShots_[i].active = false;
       loseHealth();
-    } else if (enemyShots_[i].x < 0.0f || enemyShots_[i].y < 5.0f || enemyShots_[i].y > 35.0f) {
+    } else if (enemyShots_[i].y > PLAY_BOTTOM || enemyShots_[i].x < 0.0f || enemyShots_[i].x > PORTRAIT_W) {
       enemyShots_[i].active = false;
     }
   }
 
   for (uint8_t i = 0; i < POWERS; i++) {
     if (!powers_[i].active) continue;
-    powers_[i].x -= 18.0f * dt;
-    if (powers_[i].x < 8.0f && powers_[i].lane == shipLane_) {
+    powers_[i].x += 50.0f * dt;
+    if (powers_[i].x > SHIP_Y - 14.0f && powers_[i].x < SHIP_Y + 15.0f && powers_[i].lane == shipLane_) {
       applyPower(powers_[i].type);
       powers_[i].active = false;
-    } else if (powers_[i].x < 0.0f) {
+    } else if (powers_[i].x > PLAY_BOTTOM) {
       powers_[i].active = false;
     }
   }
@@ -146,10 +202,11 @@ void AlienRaidersGame::updateRunning(uint32_t deltaMs, const ButtonInput& b1, co
     if (!enemies_[e].active) continue;
     for (uint8_t s = 0; s < SHOTS; s++) {
       if (!shots_[s].active) continue;
-      const int shotLane = constrain(static_cast<int>(shots_[s].lane), 0, LANES - 1);
-      const bool bossHit = enemies_[e].boss && shots_[s].x >= enemies_[e].x && shots_[s].x <= enemies_[e].x + 12.0f &&
-                           shots_[s].y >= 8 && shots_[s].y <= 32;
-      const bool laneHit = shotLane == enemies_[e].lane && shots_[s].x >= enemies_[e].x && shots_[s].x <= enemies_[e].x + 5.0f;
+      const bool bossHit = enemies_[e].boss && shots_[s].y >= enemies_[e].x && shots_[s].y <= enemies_[e].x + 38.0f &&
+                           shots_[s].x >= laneX(0) - 18 && shots_[s].x <= laneX(2) + 18;
+      const bool laneHit = !enemies_[e].boss &&
+                           abs(static_cast<int>(shots_[s].x) - laneX(enemies_[e].lane)) <= 13 &&
+                           shots_[s].y >= enemies_[e].x - 12.0f && shots_[s].y <= enemies_[e].x + 16.0f;
       if (bossHit || laneHit) {
         shots_[s].active = false;
         if (enemies_[e].hp > 0) enemies_[e].hp--;
@@ -190,7 +247,7 @@ void AlienRaidersGame::spawnEnemy() {
       if (score_ > 500 && roll > 84) hp = 7;
       enemies_[i].active = true;
       enemies_[i].boss = false;
-      enemies_[i].x = static_cast<float>(width - 6);
+      enemies_[i].x = static_cast<float>(PLAY_TOP + 4);
       enemies_[i].lane = random(0, LANES);
       enemies_[i].hp = hp;
       enemies_[i].maxHp = hp;
@@ -207,11 +264,12 @@ void AlienRaidersGame::spawnBoss() {
   for (uint8_t i = 0; i < POWERS; i++) powers_[i].active = false;
   enemies_[0].active = true;
   enemies_[0].boss = true;
-  enemies_[0].x = static_cast<float>(width - 14);
+  enemies_[0].x = static_cast<float>(PLAY_TOP + 8);
   enemies_[0].lane = 1;
   enemies_[0].hp = 28 + min<uint16_t>(120, score_ / 4);
   enemies_[0].maxHp = enemies_[0].hp;
   bossActive_ = true;
+  bossDirection_ = 1;
   bossShotTimerMs_ = 250;
 }
 
@@ -219,9 +277,9 @@ void AlienRaidersGame::fireShot(uint8_t lane, int8_t dy) {
   for (uint8_t i = 0; i < SHOTS; i++) {
     if (!shots_[i].active) {
       shots_[i].active = true;
-      shots_[i].x = 9.0f + (doubleMs_ > 0 ? static_cast<float>(i % 2) : 0.0f);
+      shots_[i].x = static_cast<float>(laneX(lane) + (doubleMs_ > 0 ? static_cast<int>((i % 2) * 4 - 2) : 0));
       shots_[i].lane = lane;
-      shots_[i].y = static_cast<float>(laneY(lane) + 1);
+      shots_[i].y = static_cast<float>(SHIP_Y - 16);
       shots_[i].dy = dy;
       return;
     }
@@ -279,166 +337,180 @@ void AlienRaidersGame::fireBossShot(int8_t dy) {
   for (uint8_t i = 0; i < ENEMY_SHOTS; i++) {
     if (!enemyShots_[i].active) {
       enemyShots_[i].active = true;
-      enemyShots_[i].x = 50.0f;
-      enemyShots_[i].y = static_cast<float>(laneY(1));
+      enemyShots_[i].x = static_cast<float>(laneX(1));
+      enemyShots_[i].y = bossActive_ ? enemies_[0].x + 34.0f : static_cast<float>(PLAY_TOP + 20);
       enemyShots_[i].dy = dy;
       return;
     }
   }
 }
 
-void void AlienRaidersGame::drawRunning(TFT_eSPI& tft) { tft.fillScreen(TFT_BLACK); { tft.fillScreen(TFT_BLACK);
+void AlienRaidersGame::drawRunning(TFT_eSPI& tft) {
+  clearPortrait(tft);
   if (introActive_) {
     drawIntro(tft);
     return;
   }
 
-  tft.drawRect(, 0, width, height);
-  tft.drawTriangle(9, laneY(shipLane_) + 1, 3, laneY(shipLane_) - 3, 3, laneY(shipLane_) + 5);
-  if (shieldHits_ > 0) tft.drawCircle(6, laneY(shipLane_) + 1, 5);
-  if (shieldHits_ > 2) tft.drawCircle(6, laneY(shipLane_) + 1, 7);
-  if (shieldHits_ > 5) tft.drawCircle(6, laneY(shipLane_) + 1, 9);
+  const String stat = String(score_) + " W" + String(weaponLevel_) + " H" + String(health_);
+  drawPortraitHeader(tft, "Raiders", TFT_CYAN, stat);
+  for (uint8_t lane = 0; lane < LANES; lane++) {
+    tft.drawFastVLine(laneX(lane), PLAY_TOP, PLAY_BOTTOM - PLAY_TOP, TFT_DARKGREY);
+  }
+  tft.fillRect(13, SHIP_Y + 20, PORTRAIT_W - 26, 10, TFT_DARKGREY);
+  tft.fillRect(laneX(0) - 9, SHIP_Y + 23, 18, 5, TFT_BLUE);
+  tft.fillRect(laneX(1) - 9, SHIP_Y + 23, 18, 5, TFT_BLUE);
+  tft.fillRect(laneX(2) - 9, SHIP_Y + 23, 18, 5, TFT_BLUE);
+  const int shipX = laneX(shipLane_);
+  tft.drawTriangle(shipX, SHIP_Y - 15, shipX - 11, SHIP_Y + 10, shipX + 11, SHIP_Y + 10, TFT_WHITE);
+  tft.fillTriangle(shipX, SHIP_Y - 11, shipX - 7, SHIP_Y + 7, shipX + 7, SHIP_Y + 7, TFT_CYAN);
+  if (shieldHits_ > 0) tft.drawCircle(shipX, SHIP_Y, 15, TFT_GREEN);
+  if (shieldHits_ > 2) tft.drawCircle(shipX, SHIP_Y, 19, TFT_GREEN);
+  if (shieldHits_ > 5) tft.drawCircle(shipX, SHIP_Y, 23, TFT_GREEN);
   for (uint8_t i = 0; i < ENEMIES; i++) if (enemies_[i].active) drawEnemy(tft, enemies_[i]);
-  for (uint8_t i = 0; i < SHOTS; i++) if (shots_[i].active) tft.drawPixel(static_cast<int>(shots_[i].x), static_cast<int>(shots_[i].y));
+  for (uint8_t i = 0; i < SHOTS; i++) {
+    if (shots_[i].active) {
+      const int x = static_cast<int>(shots_[i].x);
+      const int y = static_cast<int>(shots_[i].y);
+      tft.drawFastVLine(x, y - 6, 8, TFT_YELLOW);
+      tft.drawPixel(x, y - 7, TFT_WHITE);
+    }
+  }
   for (uint8_t i = 0; i < ENEMY_SHOTS; i++) {
     if (!enemyShots_[i].active) continue;
     const int x = static_cast<int>(enemyShots_[i].x);
     const int y = static_cast<int>(enemyShots_[i].y);
-    tft.drawLine(x, y, x + 2, y);
+    tft.drawLine(x, y - 2, x, y + 7, TFT_RED);
+    tft.drawPixel(x, y + 8, TFT_YELLOW);
   }
   for (uint8_t i = 0; i < POWERS; i++) {
     if (!powers_[i].active) continue;
     drawPower(tft, powers_[i]);
   }
-
-  tft.setCursor(2, 6);
-  tft.print(score_);
-  tft.setCursor(45, 6);
-  tft.print("W");
-  tft.print(weaponLevel_);
-  tft.print(" H");
-  tft.print(health_);
 }
 
 void AlienRaidersGame::drawEnemy(TFT_eSPI& tft, const Enemy& enemy) const {
-  const int x = static_cast<int>(enemy.x);
-  const int y = laneY(enemy.lane);
+  const int x = laneX(enemy.lane);
+  const int y = static_cast<int>(enemy.x);
   if (enemy.boss) {
-    tft.drawRect(x, 9, 12, 22);
-    tft.drawTriangle(x, 20, x + 12, 12, x + 12, 28);
-    if (enemy.hp > 0) tft.drawRect(x - 2, 7, 16, 26);
-    if (enemy.hp > enemy.maxHp / 3) tft.drawRect(x - 4, 5, 20, 30);
-    if (enemy.hp > (enemy.maxHp * 2) / 3) tft.drawRect(x - 6, 3, 24, 34);
+    const int left = laneX(0) - 18;
+    const int right = laneX(2) + 18;
+    tft.fillRect(left + 8, y + 6, right - left - 16, 20, TFT_PURPLE);
+    tft.drawTriangle(laneX(1), y + 42, left, y, right, y, TFT_MAGENTA);
+    if (enemy.hp > 0) tft.drawRoundRect(left - 3, y - 4, right - left + 6, 51, 8, TFT_BLUE);
+    if (enemy.hp > enemy.maxHp / 3) tft.drawRoundRect(left - 7, y - 8, right - left + 14, 59, 10, TFT_CYAN);
+    if (enemy.hp > (enemy.maxHp * 2) / 3) tft.drawRoundRect(left - 11, y - 12, right - left + 22, 67, 12, TFT_WHITE);
 
-    tft.setCursor(x + 1, 22);
-    tft.print(static_cast<int>(enemy.hp));
+    tft.setTextSize(2);
+    tft.setTextColor(TFT_WHITE, TFT_BLACK);
+    tft.drawString(String(static_cast<int>(enemy.hp)), laneX(1) - 8, y + 16);
     return;
   }
-  tft.drawTriangle(x, y, x + 6, y - 4, x + 6, y + 4);
+  tft.fillTriangle(x, y + 13, x - 11, y - 9, x + 11, y - 9, enemy.maxHp > 1 ? TFT_ORANGE : TFT_RED);
+  tft.drawTriangle(x, y + 13, x - 11, y - 9, x + 11, y - 9, TFT_WHITE);
   const uint8_t shieldLayers = enemy.hp > 1 ? enemy.hp - 1 : 0;
-  if (shieldLayers >= 1) tft.drawCircle(x + 5, y, 5);
-  if (shieldLayers >= 2) tft.drawCircle(x + 5, y, 7);
-  if (shieldLayers >= 3) tft.drawCircle(x + 5, y, 9);
+  if (shieldLayers >= 1) tft.drawCircle(x, y, 14, TFT_CYAN);
+  if (shieldLayers >= 2) tft.drawCircle(x, y, 18, TFT_BLUE);
+  if (shieldLayers >= 3) tft.drawCircle(x, y, 22, TFT_LIGHTGREY);
   if (shieldLayers >= 4) {
-
-    tft.setCursor(x + 1, y + 2);
-    tft.print(static_cast<int>(enemy.hp));
+    tft.setTextSize(1);
+    tft.setTextColor(TFT_WHITE, TFT_BLACK);
+    tft.drawString(String(static_cast<int>(enemy.hp)), x - 4, y - 4);
   }
 }
 
 void AlienRaidersGame::drawPower(TFT_eSPI& tft, const Power& power) const {
-  const int x = static_cast<int>(power.x);
-  const int y = laneY(power.lane);
+  const int x = laneX(power.lane);
+  const int y = static_cast<int>(power.x);
   if (power.type == 5) {
-    tft.fillCircle(x + 2, y + 1, 3);
-    tft.drawLine(x + 2, y - 3, x + 4, y - 6);
-    tft.drawPixel(x + 5, y - 6);
+    tft.fillCircle(x, y, 8, TFT_DARKGREY);
+    tft.drawCircle(x, y, 8, TFT_WHITE);
+    tft.drawLine(x, y - 8, x + 6, y - 14, TFT_WHITE);
+    tft.fillCircle(x + 8, y - 14, 2, TFT_ORANGE);
     return;
   }
-  tft.drawCircle(x + 2, y, 3);
-  tft.drawLine(x, y, x + 4, y);
-  tft.drawLine(x + 2, y - 2, x + 2, y + 2);
+  tft.drawCircle(x, y, 8, TFT_GREEN);
+  tft.drawLine(x - 6, y, x + 6, y, TFT_GREEN);
+  tft.drawLine(x, y - 6, x, y + 6, TFT_GREEN);
 }
 
 void AlienRaidersGame::drawIntro(TFT_eSPI& tft) const {
-  tft.drawRect(, 0, width, height);
+  drawPortraitHeader(tft, "Alien Raiders", TFT_CYAN);
   const uint16_t t = introTimerMs_;
-  const int stationX = 4;
-  const int shipX = 15 + min<int>(28, t / 55);
-  const int shipY = 22;
-  const int enemyX = 58;
+  const int stationY = 184;
+  const int shipY = 164 - min<int>(92, t / 18);
+  const int shipX = laneX(1);
+  const int enemyY = 48;
 
-  tft.drawRect(stationX, 13, 13, 18);
-  tft.fillRect(stationX + 3, 17, 4, 3);
-  tft.fillRect(stationX + 3, 25, 4, 3);
-  tft.drawLine(stationX + 12, 20, stationX + 17, 22);
-  tft.drawLine(stationX + 12, 25, stationX + 17, 22);
-  tft.drawTriangle(shipX + 7, shipY, shipX, shipY - 3, shipX, shipY + 3);
+  tft.fillRoundRect(36, stationY, 63, 35, 4, TFT_DARKGREY);
+  tft.drawRoundRect(36, stationY, 63, 35, 4, TFT_LIGHTGREY);
+  tft.fillRect(46, stationY + 8, 13, 8, TFT_BLUE);
+  tft.fillRect(76, stationY + 8, 13, 8, TFT_BLUE);
+  tft.drawLine(55, stationY, shipX, shipY + 16, TFT_LIGHTGREY);
+  tft.drawLine(80, stationY, shipX, shipY + 16, TFT_LIGHTGREY);
+  tft.fillTriangle(shipX, shipY, shipX - 10, shipY + 22, shipX + 10, shipY + 22, TFT_CYAN);
+  tft.drawTriangle(shipX, shipY, shipX - 10, shipY + 22, shipX + 10, shipY + 22, TFT_WHITE);
   if (t > 1000) {
-    tft.drawTriangle(enemyX, 18, enemyX + 6, 14, enemyX + 6, 22);
-    tft.drawTriangle(enemyX + 5, 29, enemyX + 10, 26, enemyX + 10, 32);
-    tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(3, 8, "Defend Station");
+    tft.fillTriangle(laneX(0), enemyY + 22, laneX(0) - 11, enemyY, laneX(0) + 11, enemyY, TFT_RED);
+    tft.fillTriangle(laneX(2), enemyY + 42, laneX(2) - 11, enemyY + 20, laneX(2) + 11, enemyY + 20, TFT_ORANGE);
+    drawCentered(tft, "Defend", 121, 2, TFT_YELLOW);
+    drawCentered(tft, "Station", 143, 2, TFT_YELLOW);
   } else {
-    tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(3, 8, "Launch");
+    drawCentered(tft, "Launch", 130, 2, TFT_LIGHTGREY);
   }
 }
 
-void AlienRaidersGame::drawStart(TFT_eSPI& tft) { tft.fillScreen(TFT_BLACK);
+void AlienRaidersGame::drawStart(TFT_eSPI& tft) {
+  clearPortrait(tft);
   loadBestScore();
-  tft.drawRect(0, 0, width + 2, height);
   if (showStartPromptPage()) {
-
-    tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(20, 16, "Press");
-    tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(13, 29, "to Start");
+    drawPortraitHeader(tft, appTitle(), TFT_CYAN);
+    drawCentered(tft, "Press", 86, 2, TFT_WHITE);
+    drawCentered(tft, "to Start", 111, 2, TFT_LIGHTGREY);
+    drawPortraitFooter(tft, "B1 start");
   } else if (showStartScorePage()) {
     char initials[4];
     PlayerProfile::unpackDottedInitials(bestInitials_, initials);
 
-    tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(3, 10, "Top Kills");
-
-    tft.setCursor(3, 24);
-    if (bestScore_ == 0) tft.print("--");
-    else {
-      tft.print(initials);
-      tft.print(" ");
-      tft.print(bestScore_);
-    }
+    drawPortraitHeader(tft, "Top Kills", TFT_YELLOW);
+    drawCentered(tft, "Best", 63, 2, TFT_LIGHTGREY);
+    drawCentered(tft, bestScore_ == 0 ? String("--") : String(bestScore_), 94, 3, TFT_YELLOW);
+    drawCentered(tft, bestScore_ == 0 ? String("") : String(initials), 139, 2, TFT_LIGHTGREY);
+    drawPortraitFooter(tft, "Best defense");
   } else {
-    const int stationX = 4;
-    tft.drawRect(stationX, 14, 13, 17);
-    tft.fillRect(stationX + 3, 18, 4, 3);
-    tft.fillRect(stationX + 3, 25, 4, 3);
-    tft.drawLine(stationX + 12, 20, stationX + 17, 22);
-    tft.drawLine(stationX + 12, 25, stationX + 17, 22);
-    tft.drawTriangle(33, 22, 26, 19, 26, 25);
-    tft.drawTriangle(60, 18, 66, 14, 66, 22);
-
-    tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(3, 9, appTitle());
+    drawPortraitHeader(tft, appTitle(), TFT_CYAN);
+    tft.fillRoundRect(34, 174, 67, 36, 4, TFT_DARKGREY);
+    tft.drawRoundRect(34, 174, 67, 36, 4, TFT_LIGHTGREY);
+    tft.fillTriangle(laneX(1), 132, laneX(1) - 12, 157, laneX(1) + 12, 157, TFT_CYAN);
+    tft.drawTriangle(laneX(1), 132, laneX(1) - 12, 157, laneX(1) + 12, 157, TFT_WHITE);
+    tft.fillTriangle(laneX(0), 58, laneX(0) - 11, 36, laneX(0) + 11, 36, TFT_RED);
+    tft.fillTriangle(laneX(2), 84, laneX(2) - 11, 62, laneX(2) + 11, 62, TFT_ORANGE);
+    drawPortraitFooter(tft, "B1 left  B2 right");
   }
 }
 
-void AlienRaidersGame::drawEnd(TFT_eSPI& tft) { tft.fillScreen(TFT_BLACK);
-  tft.drawRect(0, 0, width + 2, height);
-
-  tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(3, 9, "Defeated");
-
-  tft.setCursor(3, 20);
-  tft.print("Kills ");
-  tft.print(score_);
-  tft.setCursor(3, 29);
-  tft.print("Best ");
-  tft.print(bestScore_);
+void AlienRaidersGame::drawEnd(TFT_eSPI& tft) {
+  clearPortrait(tft);
+  drawPortraitHeader(tft, "Defeated", TFT_RED);
+  drawCentered(tft, "Kills", 64, 1, TFT_LIGHTGREY);
+  drawCentered(tft, String(score_), 84, 3, TFT_CYAN);
+  String best = String(bestScore_);
+  String initialsLabel;
   if (bestScore_ > 0) {
     char initials[4];
     PlayerProfile::unpackDottedInitials(bestInitials_, initials);
-    tft.print(" ");
-    tft.print(initials);
+    initialsLabel = initials;
   }
-  tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(3, 38, "Tap retry Hold menu");
+  drawCentered(tft, "Best", 130, 1, TFT_LIGHTGREY);
+  drawCentered(tft, best, 146, 2, TFT_YELLOW);
+  if (initialsLabel.length() > 0) {
+    drawCentered(tft, initialsLabel, 172, 2, TFT_LIGHTGREY);
+  }
+  drawPortraitFooter(tft, "B1 retry  Hold menu");
 }
 
-int AlienRaidersGame::laneY(uint8_t lane) const {
-  return 10 + lane * 10;
+int AlienRaidersGame::laneX(uint8_t lane) const {
+  return LANE_LEFT + static_cast<int>(lane) * LANE_STEP;
 }
 
 void AlienRaidersGame::loadBestScore() {

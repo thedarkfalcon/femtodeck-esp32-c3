@@ -5,6 +5,8 @@
 #include <NimBLEServer.h>
 #include <HIDTypes.h>
 
+#include "../../TDisplayUi.h"
+
 namespace {
 constexpr const char* DEVICE_NAME = "Logitech Signature M650";
 constexpr const char* DEVICE_MANUFACTURER = "Logitech";
@@ -66,9 +68,11 @@ void MouseEmulatorApp::onAppReset() {
   logic_.reset(millis());
   bleMouse.begin();
   lastClockUpdate_ = millis();
+  uiInitialized_ = false;
 }
 
 void MouseEmulatorApp::updateRunning(uint32_t deltaMs, const ButtonInput& b1, const ButtonInput& b2) {
+  (void)b2;
   if (b1.click) logic_.toggleEnabled(millis());
 
   uint32_t now = millis();
@@ -134,19 +138,27 @@ void MouseEmulatorApp::sendHumanizedStep() {
 }
 
 void MouseEmulatorApp::drawRunning(TFT_eSPI& tft) {
-  // Initial draw or major state change
-  if (lastUpdateMs_ == phaseStartedAtMs_) {
-    tft.fillScreen(TFT_BLACK);
-    tft.setTextColor(TFT_ORANGE, TFT_BLACK);
-    tft.setTextSize(2);
-    tft.drawString("\"Logitech Mouse\"", 10, 12);
-    tft.drawFastHLine(10, 34, 220, TFT_DARKGREY);
+  if (!uiInitialized_) {
+    TDisplayUi::clear(tft);
+    TDisplayUi::header(tft, "Mouse Emulator", TFT_ORANGE);
     tft.setTextSize(1);
     tft.setTextColor(TFT_LIGHTGREY, TFT_BLACK);
-    tft.drawString("Host Connection: ", 10, 45);
-    tft.drawString("Jiggler Core: ", 10, 60);
-    tft.drawString("Next Sweep In: ", 10, 75);
-    tft.drawString("Last Run Scale: ", 10, 90);
+    tft.drawString("Advertises as:", 10, 36);
+    tft.setTextSize(2);
+    tft.setTextColor(TFT_WHITE, TFT_BLACK);
+    tft.drawString("Logitech M650", 10, 49);
+    tft.setTextSize(1);
+    tft.setTextColor(TFT_LIGHTGREY, TFT_BLACK);
+    tft.drawString("Host", 10, 78);
+    tft.drawString("Core", 10, 94);
+    tft.drawString("Next", 10, 110);
+    TDisplayUi::footer(tft, "B1 toggle movement");
+    lastKnownConnection_ = !bleMouse.isConnected();
+    lastKnownEnabled_ = !logic_.isEnabled();
+    lastConnectionPhase_ = -1;
+    lastCountdownValue_ = INT32_MIN;
+    lastMovementPixels_ = -1;
+    uiInitialized_ = true;
   }
   updateDynamicStats(tft);
 }
@@ -155,61 +167,78 @@ void MouseEmulatorApp::updateDynamicStats(TFT_eSPI& tft) {
   tft.setTextSize(1);
   bool currentConn = bleMouse.isConnected();
   bool enabled = logic_.isEnabled();
+  const int8_t connectionPhase = currentConn ? static_cast<int8_t>((millis() / 5000) % 2) : 2;
 
   // Connection Status
-  if (currentConn) {
-    tft.setTextColor(TFT_GREEN, TFT_BLACK);
-    if ((millis() / 5000) % 2 == 0) tft.drawString("PAIRED           ", 115, 45);
-    else tft.drawString("READY            ", 115, 45);
-  } else {
-    tft.setTextColor(TFT_YELLOW, TFT_BLACK);
-    tft.drawString("WAITING - PAIRING", 115, 45);
+  if (connectionPhase != lastConnectionPhase_) {
+    tft.fillRect(70, 76, 160, 14, TFT_BLACK);
+    if (currentConn) {
+      tft.setTextColor(TFT_GREEN, TFT_BLACK);
+      tft.drawString(connectionPhase == 0 ? "PAIRED" : "READY", 70, 78);
+    } else {
+      tft.setTextColor(TFT_YELLOW, TFT_BLACK);
+      tft.drawString("WAITING TO PAIR", 70, 78);
+    }
+    lastConnectionPhase_ = connectionPhase;
+    lastKnownConnection_ = currentConn;
   }
 
   // Jiggler Status
   if (enabled != lastKnownEnabled_) {
-    tft.fillRect(115, 60, 125, 12, TFT_BLACK);
+    tft.fillRect(70, 92, 160, 14, TFT_BLACK);
     if (enabled) {
       tft.setTextColor(TFT_GREEN, TFT_BLACK);
-      tft.drawString("ACTIVE", 115, 60);
+      tft.drawString("ACTIVE", 70, 94);
     } else {
       tft.setTextColor(TFT_RED, TFT_BLACK);
-      tft.drawString("PAUSED", 115, 60);
+      tft.drawString("PAUSED", 70, 94);
     }
     lastKnownEnabled_ = enabled;
   }
 
   // Countdown
+  int32_t countdownValue = INT32_MIN;
   if (!currentConn || !enabled) {
-    tft.setTextColor(TFT_DARKGREY, TFT_BLACK);
-    tft.drawString("STANDBY                 ", 115, 75);
+    countdownValue = -1;
   } else if (logic_.isMoving()) {
-    tft.setTextColor(TFT_ORANGE, TFT_BLACK);
-    tft.drawString("0s (SWEEPING...)        ", 115, 75);
+    countdownValue = -2;
   } else {
     uint32_t elapsed = millis() - logic_.getLastJiggleTime();
     long remaining = 0;
     if (logic_.getTargetIntervalMs() > elapsed) remaining = (logic_.getTargetIntervalMs() - elapsed) / 1000;
-    tft.setTextColor(TFT_WHITE, TFT_BLACK);
-    tft.drawString(String(remaining) + " seconds               ", 115, 75);
+    countdownValue = remaining;
+  }
+  if (countdownValue != lastCountdownValue_) {
+    tft.fillRect(70, 108, 160, 10, TFT_BLACK);
+    if (countdownValue == -1) {
+      tft.setTextColor(TFT_DARKGREY, TFT_BLACK);
+      tft.drawString("STANDBY", 70, 110);
+    } else if (countdownValue == -2) {
+      tft.setTextColor(TFT_ORANGE, TFT_BLACK);
+      tft.drawString("SWEEPING", 70, 110);
+    } else {
+      tft.setTextColor(TFT_WHITE, TFT_BLACK);
+      tft.drawString(String(countdownValue) + " seconds", 70, 110);
+    }
+    lastCountdownValue_ = countdownValue;
   }
 
   // Last movement
-  tft.setTextColor(TFT_CYAN, TFT_BLACK);
-  if (logic_.getLastMovementPixels() > 0) tft.drawString(String(logic_.getLastMovementPixels()) + " px (H-Vector)  ", 115, 90);
-  else tft.drawString("No runs logged yet       ", 115, 90);
+  if (logic_.getLastMovementPixels() != lastMovementPixels_) {
+    tft.fillRect(154, 92, 76, 14, TFT_BLACK);
+    tft.setTextColor(TFT_CYAN, TFT_BLACK);
+    if (logic_.getLastMovementPixels() > 0) tft.drawString(String(logic_.getLastMovementPixels()) + " px", 154, 94);
+    else tft.drawString("no run", 154, 94);
+    lastMovementPixels_ = logic_.getLastMovementPixels();
+  }
 }
 
 void MouseEmulatorApp::drawStart(TFT_eSPI& tft) {
-    tft.fillScreen(TFT_BLACK);
-    tft.setTextColor(TFT_ORANGE, TFT_BLACK);
-    tft.setTextSize(2);
-    tft.setCursor(10, 40);
-    tft.println("Mouse Emulator");
-    tft.setTextSize(1);
-    tft.setTextColor(TFT_WHITE);
-    tft.setCursor(10, 80);
-    tft.println("Press Button 1 to Start");
+    TDisplayUi::clear(tft);
+    TDisplayUi::header(tft, "Mouse Emulator", TFT_ORANGE);
+    TDisplayUi::centered(tft, "Logitech", 48, 3, TFT_WHITE);
+    TDisplayUi::centered(tft, "Signature M650", 80, 2, TFT_LIGHTGREY);
+    TDisplayUi::footer(tft, "B1 start");
 }
 
 bool MouseEmulatorApp::hasCustomOverlay() const { return true; }

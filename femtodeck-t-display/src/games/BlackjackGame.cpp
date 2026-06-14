@@ -5,6 +5,7 @@
 #include <TFT_eSPI.h>
 
 #include "../../PlayerProfile.h"
+#include "../../TDisplayUi.h"
 
 namespace {
 constexpr uint16_t DEAL_DELAY_MS = 300;
@@ -24,11 +25,21 @@ void BlackjackGame::onAppReset() {
   loadBestBankroll();
   bankroll_ = 100;
   bet_ = 10;
+  runningDrawDirty_ = true;
+  renderedHandState_ = 255;
+  renderedResult_ = 255;
+  renderedPlayerCount_ = 255;
+  renderedDealerCount_ = 255;
+  renderedDealStep_ = 255;
+  renderedDeckRemaining_ = 255;
+  renderedBankroll_ = -32768;
+  renderedBet_ = -32768;
   shuffleDeck();
   beginBetting();
 }
 
 void BlackjackGame::updateRunning(uint32_t deltaMs, const ButtonInput& b1, const ButtonInput& b2) {
+  (void)b2;
   switch (handState_) {
     case HandState::Shuffling:
       actionTimerMs_ += deltaMs;
@@ -42,9 +53,9 @@ void BlackjackGame::updateRunning(uint32_t deltaMs, const ButtonInput& b1, const
       if (bankroll_ <= 0) {
         endApp();
       } else if (b1.click) {
-        cycleBet();
-      } else if (b1.longPress) {
         startDeal();
+      } else if (b1.longPress) {
+        cycleBet();
       }
       break;
 
@@ -85,110 +96,133 @@ void BlackjackGame::updateRunning(uint32_t deltaMs, const ButtonInput& b1, const
   }
 }
 
-void void BlackjackGame::drawRunning(TFT_eSPI& tft) { tft.fillScreen(TFT_BLACK); { tft.fillScreen(TFT_BLACK);
-  tft.drawRect(, 0, width, height);
+void BlackjackGame::drawRunning(TFT_eSPI& tft) {
+  const uint8_t state = static_cast<uint8_t>(handState_);
+  const uint8_t result = static_cast<uint8_t>(result_);
+  const bool unchanged =
+      !runningDrawDirty_ &&
+      renderedHandState_ == state &&
+      renderedResult_ == result &&
+      renderedPlayerCount_ == playerCount_ &&
+      renderedDealerCount_ == dealerCount_ &&
+      renderedDealStep_ == dealStep_ &&
+      renderedDeckRemaining_ == deckRemaining_ &&
+      renderedBankroll_ == bankroll_ &&
+      renderedBet_ == bet_;
+  if (unchanged) {
+    return;
+  }
 
-  tft.setCursor(2, 6);
-  tft.print("$");
-  tft.print(bankroll_);
-  tft.setCursor(38, 6);
-  tft.print("Bet ");
-  tft.print(bet_);
+  runningDrawDirty_ = false;
+  renderedHandState_ = state;
+  renderedResult_ = result;
+  renderedPlayerCount_ = playerCount_;
+  renderedDealerCount_ = dealerCount_;
+  renderedDealStep_ = dealStep_;
+  renderedDeckRemaining_ = deckRemaining_;
+  renderedBankroll_ = bankroll_;
+  renderedBet_ = bet_;
+
+  TDisplayUi::clear(tft);
+  const String bank = "$" + String(bankroll_) + " B" + String(bet_);
+  TDisplayUi::header(tft, "Blackjack", TFT_GREEN, bank.c_str());
 
   if (handState_ == HandState::Shuffling) {
-
-    tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(12, 20, "Shuffle");
-
-    tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(8, 32, "2 deck shoe");
+    tft.fillRoundRect(79, 44, 34, 46, 4, TFT_NAVY);
+    tft.drawRoundRect(79, 44, 34, 46, 4, TFT_WHITE);
+    tft.fillRoundRect(127, 44, 34, 46, 4, TFT_DARKGREEN);
+    tft.drawRoundRect(127, 44, 34, 46, 4, TFT_WHITE);
+    TDisplayUi::centered(tft, "Shuffling", 96, 2, TFT_YELLOW);
+    TDisplayUi::footer(tft, "Two-deck shoe");
     return;
   }
 
   if (handState_ == HandState::Betting) {
-
-    tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(17, 18, "Bet");
-    tft.setCursor(38, 18);
-    tft.print(bet_);
-
-    tft.setCursor(2, 29);
-    tft.print(deckRemaining_);
-    tft.print(" cards");
-    tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(2, 38, "Tap bet Hold deal");
+    tft.setTextSize(2);
+    tft.setTextColor(TFT_LIGHTGREY, TFT_BLACK);
+    tft.drawString("Bet", 35, 48);
+    TDisplayUi::largeValue(tft, "$" + String(bet_), 63, TFT_YELLOW);
+    tft.setTextSize(1);
+    tft.setTextColor(TFT_LIGHTGREY, TFT_BLACK);
+    tft.drawString(String(deckRemaining_) + " cards left", 86, 105);
+    TDisplayUi::footer(tft, "B1 tap deal  Hold bet");
     return;
   }
 
   const bool hideDealer = handState_ == HandState::Dealing || handState_ == HandState::PlayerTurn;
-  tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(2, 15, "D");
-  drawCards(tft, 10, 15, dealerCards_, dealerCount_, hideDealer);
-  tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(2, 27, "P");
-  drawCards(tft, 10, 27, playerCards_, playerCount_, false);
+  tft.setTextSize(2);
+  tft.setTextColor(TFT_CYAN, TFT_BLACK);
+  tft.drawString("Dealer", 10, 36);
+  drawCards(tft, 82, 35, dealerCards_, dealerCount_, hideDealer);
+  tft.setTextColor(TFT_GREEN, TFT_BLACK);
+  tft.drawString("Player", 10, 75);
+  drawCards(tft, 82, 74, playerCards_, playerCount_, false);
 
   if (handState_ == HandState::Dealing) {
-    tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(2, 38, "Dealing");
+    TDisplayUi::footer(tft, "Dealing...");
   } else if (handState_ == HandState::PlayerTurn) {
-    tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(2, 38, "Tap hit Hold stay");
+    TDisplayUi::footer(tft, "B1 hit  Hold stay");
   } else if (handState_ == HandState::DealerReveal) {
-    tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(2, 38, "Dealer shows");
+    TDisplayUi::footer(tft, "Dealer reveals");
   } else if (handState_ == HandState::DealerTurn) {
-    tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(2, 38, handValue(dealerCards_, dealerCount_) < 17 ? "Dealer hit" : "Dealer stay");
+    TDisplayUi::footer(tft, handValue(dealerCards_, dealerCount_) < 17 ? "Dealer hits" : "Dealer stays");
   } else {
-    tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(2, 38, resultText());
+    TDisplayUi::footer(tft, resultText());
   }
 }
 
-void BlackjackGame::drawStart(TFT_eSPI& tft) { tft.fillScreen(TFT_BLACK);
+void BlackjackGame::drawStart(TFT_eSPI& tft) {
+  TDisplayUi::clear(tft);
   loadBestBankroll();
-  tft.drawRect(0, 0, width + 2, height);
   if (showStartPromptPage()) {
-
-    tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(20, 16, "Press");
-    tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(13, 29, "to Start");
+    TDisplayUi::header(tft, "Blackjack", TFT_GREEN);
+    TDisplayUi::centered(tft, "Press", 50, 3, TFT_WHITE);
+    TDisplayUi::centered(tft, "to Start", 78, 2, TFT_LIGHTGREY);
+    TDisplayUi::footer(tft, "B1 start");
     return;
   }
   if (showStartScorePage()) {
     char initials[4];
     PlayerProfile::unpackDottedInitials(bestInitials_, initials);
 
-    tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(3, 9, "Top Bank");
-
-    tft.setCursor(3, 24);
-    if (bestBankroll_ <= 100) {
-      tft.print("--");
-    } else {
-      tft.print(initials);
-      tft.print(" $");
-      tft.print(bestBankroll_);
-    }
+    TDisplayUi::header(tft, "Top Bank", TFT_YELLOW);
+    TDisplayUi::largeValue(tft, bestBankroll_ <= 100 ? String("--") : String("$") + String(bestBankroll_), 52, TFT_YELLOW);
+    TDisplayUi::centered(tft, bestBankroll_ <= 100 ? String("") : String(initials), 95, 2, TFT_LIGHTGREY);
+    TDisplayUi::footer(tft, "Best bankroll");
     return;
   }
 
-  tft.drawRect(8, 16, 10, 14);
-  tft.drawRect(21, 14, 10, 14);
-  tft.fillCircle(50, 24, 5);
-  tft.drawCircle(58, 25, 5);
-
-  tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(3, 9, appTitle());
-
-  tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(14, 38, "2 deck shoe");
+  TDisplayUi::header(tft, appTitle(), TFT_GREEN);
+  tft.fillRoundRect(42, 52, 32, 45, 4, TFT_WHITE);
+  tft.drawRoundRect(42, 52, 32, 45, 4, TFT_DARKGREY);
+  tft.setTextSize(2);
+  tft.setTextColor(TFT_RED, TFT_WHITE);
+  tft.drawString("A", 52, 64);
+  tft.fillRoundRect(80, 44, 32, 45, 4, TFT_WHITE);
+  tft.drawRoundRect(80, 44, 32, 45, 4, TFT_DARKGREY);
+  tft.setTextColor(TFT_BLACK, TFT_WHITE);
+  tft.drawString("K", 90, 56);
+  tft.fillCircle(157, 75, 18, TFT_RED);
+  tft.drawCircle(157, 75, 18, TFT_YELLOW);
+  tft.fillCircle(185, 78, 18, TFT_BLUE);
+  tft.drawCircle(185, 78, 18, TFT_WHITE);
+  TDisplayUi::footer(tft, "Two-deck shoe");
 }
 
-void BlackjackGame::drawEnd(TFT_eSPI& tft) { tft.fillScreen(TFT_BLACK);
-  tft.drawRect(0, 0, width + 2, height);
+void BlackjackGame::drawEnd(TFT_eSPI& tft) {
+  TDisplayUi::clear(tft);
+  TDisplayUi::header(tft, "Cash Out", TFT_GREEN);
 
-  tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(3, 9, "Cash Out");
-
-  tft.setCursor(3, 20);
-  tft.print("Bank ");
-  tft.print(bankroll_);
-  tft.setCursor(3, 29);
-  tft.print("Best ");
-  tft.print(bestBankroll_);
+  TDisplayUi::labelValue(tft, 48, "Bank", "$" + String(bankroll_), bankroll_ > 100 ? TFT_GREEN : TFT_YELLOW);
+  String best = bestBankroll_ > 100 ? "$" + String(bestBankroll_) : String("--");
   if (bestBankroll_ > 100) {
     char initials[4];
     PlayerProfile::unpackDottedInitials(bestInitials_, initials);
-    tft.print(" ");
-    tft.print(initials);
+    best += " ";
+    best += initials;
   }
-  tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(3, 38, "Tap retry Hold menu");
+  TDisplayUi::labelValue(tft, 78, "Best", best, TFT_YELLOW);
+  TDisplayUi::footer(tft, "B1 retry  Hold menu");
 }
 
 void BlackjackGame::loadBestBankroll() {
@@ -257,8 +291,20 @@ void BlackjackGame::updateDeal(uint32_t deltaMs) {
   }
   dealStep_++;
   if (dealStep_ >= 4) {
-    if (handValue(playerCards_, playerCount_) == 21) {
-      stand();
+    const bool playerNatural = isNaturalBlackjack(playerCards_, playerCount_);
+    const bool dealerNatural = isNaturalBlackjack(dealerCards_, dealerCount_);
+    if (playerNatural || dealerNatural) {
+      if (playerNatural && dealerNatural) {
+        result_ = RoundResult::Push;
+      } else if (playerNatural) {
+        result_ = RoundResult::Blackjack;
+        bankroll_ += (bet_ * 3) / 2;
+      } else {
+        result_ = RoundResult::Lose;
+        bankroll_ -= bet_;
+      }
+      saveBestIfNeeded();
+      handState_ = HandState::RoundOver;
     } else {
       handState_ = HandState::PlayerTurn;
     }
@@ -337,6 +383,10 @@ uint8_t BlackjackGame::handValue(const uint8_t* cards, uint8_t count) const {
   return total;
 }
 
+bool BlackjackGame::isNaturalBlackjack(const uint8_t* cards, uint8_t count) const {
+  return count == 2 && handValue(cards, count) == 21;
+}
+
 void BlackjackGame::cycleBet() {
   const int16_t options[] = {10, 20, 30, 50};
   for (uint8_t i = 0; i < 4; i++) {
@@ -361,8 +411,8 @@ void BlackjackGame::settleRound() {
       result_ = RoundResult::Bust;
       bankroll_ -= bet_;
     } else if (dealer > 21 || player > dealer) {
-      result_ = player == 21 && playerCount_ == 2 ? RoundResult::Blackjack : RoundResult::Win;
-      bankroll_ += result_ == RoundResult::Blackjack ? bet_ + (bet_ / 2) : bet_;
+      result_ = isNaturalBlackjack(playerCards_, playerCount_) ? RoundResult::Blackjack : RoundResult::Win;
+      bankroll_ += result_ == RoundResult::Blackjack ? (bet_ * 3) / 2 : bet_;
     } else if (player == dealer) {
       result_ = RoundResult::Push;
     } else {
@@ -423,7 +473,7 @@ const char* BlackjackGame::resultText() const {
     case RoundResult::Bust:
       return "Bust Tap next";
     case RoundResult::Blackjack:
-      return "Blackjack!";
+      return "Blackjack 3:2";
     case RoundResult::None:
     default:
       return "";
@@ -433,14 +483,29 @@ const char* BlackjackGame::resultText() const {
 void BlackjackGame::drawCards(TFT_eSPI& tft, int x, int y, const uint8_t* cards, uint8_t count, bool hideFirst) {
   const uint8_t visibleCards = min<uint8_t>(count, 6);
   for (uint8_t i = 0; i < visibleCards; i++) {
-    tft.drawRect(x + i * 8, y - 6, 7, 8);
-    tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(x + i * 8 + 2, y, hideFirst && i == 0 ? "?" : cardLabel(cards[i]));
+    const int cardX = x + i * 24;
+    if (hideFirst && i == 0) {
+      tft.fillRoundRect(cardX, y, 20, 28, 3, TFT_NAVY);
+      tft.drawRoundRect(cardX, y, 20, 28, 3, TFT_WHITE);
+      tft.drawLine(cardX + 4, y + 6, cardX + 16, y + 22, TFT_CYAN);
+      tft.drawLine(cardX + 16, y + 6, cardX + 4, y + 22, TFT_CYAN);
+    } else {
+      tft.fillRoundRect(cardX, y, 20, 28, 3, TFT_WHITE);
+      tft.drawRoundRect(cardX, y, 20, 28, 3, TFT_DARKGREY);
+      const bool red = cards[i] == 1 || cards[i] > 10;
+      tft.setTextSize(2);
+      tft.setTextColor(red ? TFT_RED : TFT_BLACK, TFT_WHITE);
+      tft.drawString(cardLabel(cards[i]), cardX + 5, y + 7);
+    }
   }
   if (count > visibleCards) {
-    tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(x + visibleCards * 8 + 1, y, "+");
+    tft.setTextSize(2);
+    tft.setTextColor(TFT_LIGHTGREY, TFT_BLACK);
+    tft.drawString("+", x + visibleCards * 24 + 2, y + 8);
   }
   if (!hideFirst && count > 0) {
-    tft.setCursor(x + 48, y);
-    tft.print(handValue(cards, count));
+    tft.setTextSize(2);
+    tft.setTextColor(TFT_YELLOW, TFT_BLACK);
+    tft.drawString(String(handValue(cards, count)), 215, y + 7);
   }
 }

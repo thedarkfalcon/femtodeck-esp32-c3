@@ -17,4 +17,8 @@ class CoinFlipperApp : public App {
 
   private:
     CoinFlipperLogic logic_;
+    CoinFlipperLogic::Mode renderedMode_ = CoinFlipperLogic::Mode::Ready;
+    bool renderedHeads_ = true;
+    uint16_t renderedFrame_ = UINT16_MAX;
+    bool dirty_ = true;
 };

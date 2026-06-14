@@ -2,6 +2,7 @@
 
 #include <TFT_eSPI.h>
 
+#include "../../TDisplayUi.h"
 #include "../../Version.h"
 
 namespace {
@@ -41,6 +42,7 @@ const CreditPage CREDIT_PAGES[] = {
     {"Reactor", "thedarkfalcon", nullptr},
     {"Simon", "thedarkfalcon", nullptr},
     {"Pet Simulator", "thedarkfalcon", nullptr},
+    {"Femto Clock", "thedarkfalcon", nullptr},
     {"Counter", "thedarkfalcon", nullptr},
     {"Mouse Emulator", "thedarkfalcon", nullptr},
     {"Reading", "thedarkfalcon", nullptr},
@@ -50,6 +52,7 @@ const CreditPage CREDIT_PAGES[] = {
     {"Coin Flipper", "thedarkfalcon", nullptr},
     {"Random Number", "thedarkfalcon", nullptr},
     {"Metronome", "thedarkfalcon", nullptr},
+    {"ESP Contacts", "thedarkfalcon", nullptr},
     {"Options", "thedarkfalcon", nullptr},
     {"About", "thedarkfalcon", nullptr},
 };
@@ -59,12 +62,72 @@ void drawGithubHandle(TFT_eSPI& tft, int x, int y, const char* handle) {
   if (handle == nullptr) {
     return;
   }
+  tft.setTextSize(1);
   if (handle[0] == 't') {
-    tft.drawString(x, y, "github:");
-    tft.drawString(x, y + 7, handle);
+    tft.drawString("github:", x, y);
+    tft.drawString(handle, x, y + 12);
   } else {
-    tft.drawString(x, y, "github:");
-    tft.drawString(x + 28, y, handle);
+    tft.drawString("github:", x, y);
+    tft.drawString(handle, x + 44, y);
+  }
+}
+
+void drawShell(TFT_eSPI& tft, uint32_t width, uint32_t height, const char* title, uint8_t page = 0, uint8_t pageCount = 0) {
+  tft.fillScreen(TFT_BLACK);
+  tft.setTextDatum(TL_DATUM);
+  tft.setTextSize(2);
+  tft.setTextColor(TFT_ORANGE, TFT_BLACK);
+  tft.drawString(title, 12, 8);
+
+  if (pageCount > 0) {
+    char counter[10];
+    snprintf(counter, sizeof(counter), "%u/%u", page + 1, pageCount);
+    tft.setTextSize(1);
+    tft.setTextColor(TFT_LIGHTGREY, TFT_BLACK);
+    tft.drawString(counter, width - tft.textWidth(counter) - 12, 12);
+  }
+
+  tft.drawFastHLine(12, 34, width - 24, TFT_DARKGREY);
+  tft.drawRect(0, 0, width, height, TFT_DARKGREY);
+}
+
+void drawFooter(TFT_eSPI& tft, uint32_t width, uint32_t height, const char* text) {
+  tft.fillRect(0, height - 17, width, 17, TFT_BLACK);
+  tft.setTextSize(1);
+  tft.setTextColor(TFT_LIGHTGREY, TFT_BLACK);
+  tft.drawString(text, 12, height - 13);
+}
+
+void drawMenuRow(TFT_eSPI& tft, uint32_t width, int y, const char* text, bool selected) {
+  const uint16_t color = selected ? TFT_GREEN : TFT_DARKGREY;
+  tft.fillRect(14, y, width - 28, 27, color);
+  tft.setTextSize(2);
+  tft.setTextColor(selected ? TFT_BLACK : TFT_WHITE, color);
+  tft.drawString(text, 24, y + 6);
+}
+
+void drawBodyLine(TFT_eSPI& tft, int x, int y, const char* text, uint16_t color = TFT_WHITE) {
+  tft.setTextSize(1);
+  tft.setTextColor(color, TFT_BLACK);
+  tft.drawString(text, x, y);
+}
+
+template <typename Drawer>
+void drawBuffered(TFT_eSPI& tft, uint32_t width, uint32_t height, Drawer drawer) {
+  static TFT_eSprite frame(&tft);
+  static bool frameTried = false;
+  static bool frameReady = false;
+  if (!frameTried) {
+    frameTried = true;
+    frame.setColorDepth(8);
+    frameReady = frame.createSprite(width, height) != nullptr;
+  }
+
+  if (frameReady) {
+    drawer(frame);
+    frame.pushSprite(0, 0);
+  } else {
+    drawer(tft);
   }
 }
 }
@@ -76,41 +139,75 @@ bool CreditsApp::hasCustomOverlay() const {
   return true;
 }
 
+void CreditsApp::render(TFT_eSPI& tft) {
+  const AppPhase currentPhase = phase();
+  if (!phaseCached_ || currentPhase != renderedPhase_) {
+    phaseCached_ = true;
+    renderedPhase_ = currentPhase;
+    dirty_ = true;
+    startDirty_ = true;
+    endDirty_ = true;
+  }
+  App::render(tft);
+}
+
+void CreditsApp::markDirty() {
+  dirty_ = true;
+}
+
 void CreditsApp::onAppReset() {
   mode_ = Mode::Select;
   selection_ = 0;
   page_ = 0;
+  markDirty();
 }
 
 void CreditsApp::updateRunning(uint32_t deltaMs, const ButtonInput& b1, const ButtonInput& b2) {
   (void)deltaMs;
 
-  if (mode_ == Mode::Select) {
-    if (input.click) {
-      selection_ = (selection_ + 1) % ABOUT_ITEM_COUNT;
-    } else if (input.longPress) {
-      mode_ = selection_ == 0 ? Mode::License : Mode::Credits;
+  if (b2.click) {
+    if (mode_ == Mode::Select) {
+      requestExitToMenu();
+    } else {
+      mode_ = Mode::Select;
       page_ = 0;
+      markDirty();
     }
     return;
   }
 
-  if (input.longPress) {
+  if (mode_ == Mode::Select) {
+    if (b1.click) {
+      selection_ = (selection_ + 1) % ABOUT_ITEM_COUNT;
+      markDirty();
+    } else if (b1.longPress) {
+      mode_ = selection_ == 0 ? Mode::License : Mode::Credits;
+      page_ = 0;
+      markDirty();
+    }
+    return;
+  }
+
+  if (b1.longPress) {
     requestExitToMenu();
     return;
   }
 
-  if (input.click) {
+  if (b1.click) {
     page_++;
     const uint8_t pageCount = mode_ == Mode::License ? LICENSE_PAGE_COUNT : CREDIT_PAGE_COUNT;
     if (page_ >= pageCount) {
       mode_ = Mode::Select;
       page_ = 0;
     }
+    markDirty();
   }
 }
 
 void CreditsApp::drawRunning(TFT_eSPI& tft) {
+  if (!dirty_) {
+    return;
+  }
   switch (mode_) {
     case Mode::License:
       drawLicense(tft);
@@ -123,94 +220,87 @@ void CreditsApp::drawRunning(TFT_eSPI& tft) {
       drawSelect(tft);
       break;
   }
+  dirty_ = false;
 }
 
 void CreditsApp::drawSelect(TFT_eSPI& tft) {
-  tft.drawRect(0, 0, width + 2, height);
-
-  tft.drawString(3, 8, "About");
-  tft.setCursor(width - 14, 8);
-  tft.print(selection_ + 1);
-  tft.print("/");
-  tft.print(ABOUT_ITEM_COUNT);
-
-
-  tft.drawString(3, 22, ABOUT_ITEMS[selection_]);
-  tft.drawString(3, 32, "Tap next");
-
-  tft.drawString(3, 39, "Hold open");
+  const TDisplayUi::TextSize textSize = TDisplayUi::loadTextSize();
+  const uint8_t first = TDisplayUi::menuScrollOffset(selection_, ABOUT_ITEM_COUNT, TDisplayUi::menuStyle(textSize));
+  drawBuffered(tft, width, height, [&](auto& canvas) {
+    TDisplayUi::menuFrame(canvas, "About", selection_, ABOUT_ITEM_COUNT, first,
+                          [](uint8_t index) -> const char* { return ABOUT_ITEMS[index]; },
+                          "B1 next/open  B2 back", textSize, TFT_GREEN);
+  });
 }
 
 void CreditsApp::drawLicense(TFT_eSPI& tft) {
-  tft.drawRect(0, 0, width + 2, height);
-
+  drawShell(tft, width, height, "License", page_, LICENSE_PAGE_COUNT);
 
   switch (page_) {
     case 0:
-      tft.drawString(3, 9, "License");
-      tft.drawString(3, 22, "WTFPL +");
-      tft.drawString(3, 34, "No Warranty");
+      drawBodyLine(tft, 18, 50, "WTFPL + No Warranty", TFT_GREEN);
+      drawBodyLine(tft, 18, 70, "Do what you want.");
+      drawBodyLine(tft, 18, 86, "Use at your own risk.");
       break;
     case 1:
-      tft.drawString(3, 9, "Copyright");
-
-      tft.drawString(3, 20, "2026");
-      tft.drawString(3, 29, "github:");
-      tft.drawString(3, 38, "thedarkfalcon");
+      drawBodyLine(tft, 18, 50, "Copyright 2026");
+      drawBodyLine(tft, 18, 68, "github:");
+      drawBodyLine(tft, 72, 68, "thedarkfalcon", TFT_GREEN);
       break;
     case 2:
-      tft.drawString(3, 9, "Permission");
-
-      tft.drawString(3, 20, "copy modify");
-      tft.drawString(3, 29, "publish sell");
-      tft.drawString(3, 38, "as you want");
+      drawBodyLine(tft, 18, 50, "Permission:");
+      drawBodyLine(tft, 18, 68, "copy, modify, publish,");
+      drawBodyLine(tft, 18, 84, "sell, and share freely.");
       break;
     default:
-      tft.drawString(3, 9, "No Warranty");
-
-      tft.drawString(3, 20, "provided as-is");
-      tft.drawString(3, 29, "use at your");
-      tft.drawString(3, 38, "own risk");
+      drawBodyLine(tft, 18, 50, "No warranty.");
+      drawBodyLine(tft, 18, 68, "Provided as-is.");
+      drawBodyLine(tft, 18, 84, "No fitness guarantee.");
       break;
   }
+  drawFooter(tft, width, height, "B1 next page  B2 back");
 }
 
 void CreditsApp::drawCredits(TFT_eSPI& tft) {
-  tft.drawRect(0, 0, width + 2, height);
+  drawShell(tft, width, height, "Credits", page_, CREDIT_PAGE_COUNT);
   const CreditPage& credit = CREDIT_PAGES[page_];
 
-
-  tft.drawString(3, 9, credit.game);
-
+  tft.setTextSize(2);
+  tft.setTextColor(TFT_WHITE, TFT_BLACK);
+  tft.drawString(credit.game, 18, 48);
 
   if (credit.author2 != nullptr) {
-    tft.drawString(3, 18, "Created:atomic14");
-    tft.drawString(3, 29, "Modified:");
-    tft.drawString(3, 38, credit.author2);
+    drawBodyLine(tft, 20, 78, "Created: atomic14");
+    drawBodyLine(tft, 20, 94, "Modified:");
+    drawBodyLine(tft, 84, 94, credit.author2, TFT_GREEN);
   } else if (credit.author1[0] != 't') {
-    tft.drawString(3, 19, "Developer");
-    drawGithubHandle(tft, 3, 28, credit.author1);
+    drawBodyLine(tft, 20, 78, "Inspiration");
+    drawGithubHandle(tft, 20, 94, credit.author1);
   } else {
-    tft.drawString(3, 19, "Developer");
-    drawGithubHandle(tft, 3, 28, credit.author1);
+    drawBodyLine(tft, 20, 78, "Developer");
+    drawGithubHandle(tft, 20, 94, credit.author1);
   }
+  drawFooter(tft, width, height, "B1 next page  B2 back");
 }
 
 void CreditsApp::drawStart(TFT_eSPI& tft) {
-  tft.drawRect(0, 0, width + 2, height);
-
-  tft.drawString(3, 10, "About");
-  tft.drawString(3, 24, "Tap to view");
-
-  tft.drawString(3, 36, BuildInfo::BUILD_TEXT);
+  if (!startDirty_) {
+    return;
+  }
+  drawShell(tft, width, height, "About");
+  drawBodyLine(tft, 20, 54, "License and credits");
+  drawBodyLine(tft, 20, 76, BuildInfo::BUILD_TEXT, TFT_GREEN);
+  drawFooter(tft, width, height, "B1 start  B2 back");
+  startDirty_ = false;
 }
 
 void CreditsApp::drawEnd(TFT_eSPI& tft) {
-  tft.drawRect(0, 0, width + 2, height);
-
-  tft.drawString(3, 12, "About");
-  tft.drawString(3, 26, "Tap replay");
-
-  tft.drawString(3, 32, BuildInfo::BUILD_TEXT);
-  tft.drawString(3, 38, "Hold menu");
+  if (!endDirty_) {
+    return;
+  }
+  drawShell(tft, width, height, "About");
+  drawBodyLine(tft, 20, 54, "End");
+  drawBodyLine(tft, 20, 76, BuildInfo::BUILD_TEXT, TFT_GREEN);
+  drawFooter(tft, width, height, "B1 replay  B2 back");
+  endDirty_ = false;
 }

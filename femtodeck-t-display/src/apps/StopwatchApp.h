@@ -16,5 +16,11 @@ class StopwatchApp : public App {
     bool startsRunningImmediately() const override;
 
   private:
+    void drawStatic(TFT_eSPI& tft, bool running);
+    void drawElapsed(TFT_eSPI& tft, uint32_t elapsedMs, bool running);
+
     StopwatchLogic logic_;
+    bool uiInitialized_ = false;
+    bool lastRunning_ = false;
+    uint32_t lastRenderedTick_ = UINT32_MAX;
 };

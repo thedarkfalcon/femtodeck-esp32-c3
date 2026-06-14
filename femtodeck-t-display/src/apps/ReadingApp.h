@@ -7,6 +7,7 @@ class ReadingApp : public App {
     ReadingApp(uint32_t width, uint32_t height);
 
     bool hasCustomOverlay() const override;
+    void render(TFT_eSPI& tft) override;
 
   protected:
     void onAppReset() override;
@@ -22,14 +23,18 @@ class ReadingApp : public App {
       Complete
     };
 
-    bool hasMoreAfterPage(const char* text, uint8_t page) const;
     void drawSelection(TFT_eSPI& tft) const;
-    void drawReading(TFT_eSPI& tft) const;
+    void drawReading(TFT_eSPI& tft);
     void drawComplete(TFT_eSPI& tft) const;
     void drawCenteredText(TFT_eSPI& tft, int y, const char* text) const;
-    bool drawWrappedPage(TFT_eSPI& tft, const char* text, uint8_t page, int firstY) const;
+    void markDirty();
 
     uint8_t selection_;
     uint8_t page_;
     Mode mode_;
+    bool pageHasMore_ = false;
+    bool dirty_ = true;
+    bool startDirty_ = true;
+    bool phaseCached_ = false;
+    AppPhase renderedPhase_ = AppPhase::Start;
 };

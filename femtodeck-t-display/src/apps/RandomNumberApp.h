@@ -6,6 +6,7 @@
 class RandomNumberApp : public App {
   public:
     RandomNumberApp(uint32_t width, uint32_t height);
+    void render(TFT_eSPI& tft) override;
 
   protected:
     void onAppReset() override;
@@ -16,5 +17,11 @@ class RandomNumberApp : public App {
     bool startsRunningImmediately() const override;
 
   private:
+    void markDirty();
+
     RandomNumberLogic logic_;
+    bool dirty_ = true;
+    bool startDirty_ = true;
+    bool phaseCached_ = false;
+    AppPhase renderedPhase_ = AppPhase::Start;
 };

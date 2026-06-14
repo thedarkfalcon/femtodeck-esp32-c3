@@ -5,6 +5,7 @@
 #include <TFT_eSPI.h>
 
 #include "../../PlayerProfile.h"
+#include "../../TDisplayUi.h"
 
 namespace {
 constexpr uint8_t COURSE_HOLE_COUNT = 5;
@@ -21,6 +22,12 @@ constexpr float CUP_CAPTURE_RADIUS = 3.6f;
 constexpr float CUP_CAPTURE_SPEED = 34.0f;
 
 Preferences golfScorePrefs;
+constexpr int COURSE_X = 10;
+constexpr int COURSE_Y = 31;
+constexpr int COURSE_W = 220;
+constexpr int COURSE_H = 85;
+constexpr int LOGICAL_W = 70;
+constexpr int LOGICAL_H = 40;
 
 struct CourseWall {
   int x = 0;
@@ -101,6 +108,22 @@ float distanceToSegmentSq(float px, float py, float x1, float y1, float x2, floa
   const float dy = py - ny;
   return dx * dx + dy * dy;
 }
+
+int sx(float x) {
+  return COURSE_X + static_cast<int>((x / static_cast<float>(LOGICAL_W - 1)) * static_cast<float>(COURSE_W) + 0.5f);
+}
+
+int sy(float y) {
+  return COURSE_Y + static_cast<int>((y / static_cast<float>(LOGICAL_H - 1)) * static_cast<float>(COURSE_H) + 0.5f);
+}
+
+int sw(float w) {
+  return max(1, static_cast<int>((w / static_cast<float>(LOGICAL_W)) * static_cast<float>(COURSE_W) + 0.5f));
+}
+
+int sh(float h) {
+  return max(1, static_cast<int>((h / static_cast<float>(LOGICAL_H)) * static_cast<float>(COURSE_H) + 0.5f));
+}
 }
 
 TinyGolfGame::TinyGolfGame(uint32_t width, uint32_t height)
@@ -118,6 +141,7 @@ void TinyGolfGame::onAppReset() {
 }
 
 void TinyGolfGame::updateRunning(uint32_t deltaMs, const ButtonInput& b1, const ButtonInput& b2) {
+  (void)b2;
   switch (playState_) {
     case PlayState::Aim:
       updateAim(deltaMs);
@@ -145,68 +169,71 @@ void TinyGolfGame::updateRunning(uint32_t deltaMs, const ButtonInput& b1, const 
   }
 }
 
-void void TinyGolfGame::drawRunning(TFT_eSPI& tft) { tft.fillScreen(TFT_BLACK); { tft.fillScreen(TFT_BLACK);
+void TinyGolfGame::drawRunning(TFT_eSPI& tft) {
+  TDisplayUi::clear(tft);
+  const String stat = "H" + String(holeIndex_ + 1) + " S" + String(totalStrokes_);
+  TDisplayUi::header(tft, "Tiny Golf", TFT_GREEN, stat.c_str());
   drawCourse(tft);
-  drawHud(tft);
   if (playState_ == PlayState::Aim) {
     drawAim(tft);
+    TDisplayUi::footer(tft, "B1 set angle");
   } else if (playState_ == PlayState::Power) {
     drawAim(tft);
     drawPower(tft);
+    TDisplayUi::footer(tft, "B1 set power");
   } else if (playState_ == PlayState::Holed) {
-
-    tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(20, 24, "Nice");
+    TDisplayUi::centered(tft, "Nice", 68, 3, TFT_YELLOW);
+    TDisplayUi::footer(tft, "Holed");
+  } else {
+    TDisplayUi::footer(tft, "Rolling");
   }
 }
 
-void TinyGolfGame::drawStart(TFT_eSPI& tft) { tft.fillScreen(TFT_BLACK);
+void TinyGolfGame::drawStart(TFT_eSPI& tft) {
+  TDisplayUi::clear(tft);
   loadBestScore();
-  tft.drawRect(0, 0, width + 2, height);
   if (showStartPromptPage()) {
-
-    tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(20, 16, "Press");
-    tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(13, 29, "to Start");
+    TDisplayUi::header(tft, appTitle(), TFT_GREEN);
+    TDisplayUi::centered(tft, "Press", 50, 3, TFT_WHITE);
+    TDisplayUi::centered(tft, "to Start", 78, 2, TFT_LIGHTGREY);
+    TDisplayUi::footer(tft, "B1 start");
   } else if (showStartScorePage()) {
     char initials[4];
     PlayerProfile::unpackDottedInitials(bestInitials_, initials);
 
-    tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(3, 10, "Top Score");
-
-    tft.setCursor(3, 24);
-    if (bestScore_ == 0) {
-      tft.print("--");
-    } else {
-      tft.print(initials);
-      tft.print(" ");
-      tft.print(bestScore_);
-    }
+    TDisplayUi::header(tft, "Top Score", TFT_YELLOW);
+    TDisplayUi::largeValue(tft, bestScore_ == 0 ? String("--") : String(bestScore_), 54, TFT_YELLOW);
+    TDisplayUi::centered(tft, bestScore_ == 0 ? String("") : String(initials), 96, 2, TFT_LIGHTGREY);
+    TDisplayUi::footer(tft, "Lowest score wins");
   } else {
-
-    tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(3, 10, appTitle());
-    tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(3, 34, "Low score wins");
+    TDisplayUi::header(tft, appTitle(), TFT_GREEN);
+    tft.drawRoundRect(35, 47, 168, 56, 6, TFT_DARKGREEN);
+    tft.fillCircle(60, 84, 5, TFT_WHITE);
+    tft.drawCircle(175, 65, 8, TFT_DARKGREY);
+    tft.fillCircle(175, 65, 3, TFT_BLACK);
+    tft.fillRect(92, 48, 8, 41, TFT_DARKGREEN);
+    tft.fillRect(124, 61, 55, 7, TFT_DARKGREEN);
+    tft.drawLine(62, 82, 120, 62, TFT_LIGHTGREY);
+    TDisplayUi::footer(tft, "Low score wins");
   }
 }
 
-void TinyGolfGame::drawEnd(TFT_eSPI& tft) { tft.fillScreen(TFT_BLACK);
-  tft.drawRect(0, 0, width + 2, height);
-
-  tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(3, 9, "Course Done");
-  tft.setCursor(3, 19);
-  tft.print("Score:");
-  tft.print(totalStrokes_);
-  tft.setCursor(3, 29);
-  tft.print("Best:");
+void TinyGolfGame::drawEnd(TFT_eSPI& tft) {
+  TDisplayUi::clear(tft);
+  TDisplayUi::header(tft, "Course Done", TFT_GREEN);
+  TDisplayUi::labelValue(tft, 48, "Score", String(totalStrokes_), TFT_GREEN);
+  String best = "--";
   if (bestScore_ == 0) {
-    tft.print("--");
+    best = "--";
   } else {
-    tft.print(bestScore_);
+    best = String(bestScore_);
     char initials[4];
     PlayerProfile::unpackDottedInitials(bestInitials_, initials);
-    tft.print(" ");
-    tft.print(initials);
+    best += " ";
+    best += initials;
   }
-
-  tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(3, 38, "Tap retry Hold menu");
+  TDisplayUi::labelValue(tft, 78, "Best", best, TFT_YELLOW);
+  TDisplayUi::footer(tft, "B1 retry  Hold menu");
 }
 
 void TinyGolfGame::loadBestScore() {
@@ -307,25 +334,27 @@ void TinyGolfGame::updateBall(uint32_t deltaMs) {
 
 void TinyGolfGame::drawCourse(TFT_eSPI& tft) {
   const CourseHole& hole = HOLES[holeIndex_];
-  tft.drawRect(, 0, width, height);
-  tft.drawLine(1, HUD_H, width - 2, HUD_H);
-  tft.drawCircle(hole.cupX, hole.cupY, 2);
-  tft.drawPixel(hole.cupX, hole.cupY);
+  tft.drawRoundRect(COURSE_X, COURSE_Y, COURSE_W, COURSE_H, 4, TFT_DARKGREEN);
+  tft.drawFastHLine(COURSE_X + 1, sy(HUD_H), COURSE_W - 2, TFT_DARKGREEN);
+  tft.drawCircle(sx(hole.cupX), sy(hole.cupY), 7, TFT_LIGHTGREY);
+  tft.fillCircle(sx(hole.cupX), sy(hole.cupY), 4, TFT_BLACK);
   for (uint8_t i = 0; i < COURSE_WALL_COUNT; i++) {
     const CourseWall& wall = hole.walls[i];
     if (wall.w <= 0 || wall.h <= 0) {
       continue;
     }
-    tft.fillRect(wall.x, wall.y, wall.w, wall.h);
+    tft.fillRoundRect(sx(wall.x), sy(wall.y), sw(wall.w), sh(wall.h), 2, TFT_LIGHTGREY);
   }
   for (uint8_t i = 0; i < COURSE_GUIDE_COUNT; i++) {
     const CourseGuide& guide = hole.guides[i];
     if (guide.x1 == 0 && guide.y1 == 0 && guide.x2 == 0 && guide.y2 == 0) {
       continue;
     }
-    tft.drawLine(guide.x1, guide.y1, guide.x2, guide.y2);
+    tft.drawLine(sx(guide.x1), sy(guide.y1), sx(guide.x2), sy(guide.y2), TFT_YELLOW);
+    tft.drawLine(sx(guide.x1) + 1, sy(guide.y1), sx(guide.x2) + 1, sy(guide.y2), TFT_ORANGE);
   }
-  tft.fillCircle(static_cast<int>(ballX_ + 0.5f), static_cast<int>(ballY_ + 0.5f), 1);
+  tft.fillCircle(sx(ballX_), sy(ballY_), 5, TFT_WHITE);
+  tft.drawCircle(sx(ballX_), sy(ballY_), 5, TFT_DARKGREY);
 }
 
 void TinyGolfGame::drawHud(TFT_eSPI& tft) {
@@ -339,16 +368,14 @@ void TinyGolfGame::drawHud(TFT_eSPI& tft) {
 
 void TinyGolfGame::drawAim(TFT_eSPI& tft) {
   const int aimLen = 8;
-  const int x2 = static_cast<int>(ballX_ + cosf(aimAngle_) * aimLen + 0.5f);
-  const int y2 = static_cast<int>(ballY_ + sinf(aimAngle_) * aimLen + 0.5f);
-  tft.drawLine(static_cast<int>(ballX_), static_cast<int>(ballY_), x2, y2);
+  const float x2 = ballX_ + cosf(aimAngle_) * aimLen;
+  const float y2 = ballY_ + sinf(aimAngle_) * aimLen;
+  tft.drawLine(sx(ballX_), sy(ballY_), sx(x2), sy(y2), TFT_CYAN);
+  tft.fillCircle(sx(x2), sy(y2), 2, TFT_CYAN);
 }
 
 void TinyGolfGame::drawPower(TFT_eSPI& tft) {
-  const int barX = 45;
-  const int barW = 20;
-  tft.drawRect(barX, 2, barW, 4);
-  tft.fillRect(barX + 1, 3, static_cast<int>((barW - 2) * power_), 2);
+  TDisplayUi::bar(tft, 154, 8, 72, 10, power_, power_ > 0.78f ? TFT_RED : TFT_YELLOW);
 }
 
 void TinyGolfGame::startShot() {
@@ -400,9 +427,9 @@ bool TinyGolfGame::hitsCup() const {
 
 void TinyGolfGame::bounceBounds() {
   const float minX = 2.0f;
-  const float maxX = static_cast<float>(width - 3);
+  const float maxX = static_cast<float>(LOGICAL_W - 3);
   const float minY = static_cast<float>(HUD_H + 2);
-  const float maxY = static_cast<float>(height - 3);
+  const float maxY = static_cast<float>(LOGICAL_H - 3);
   if (ballX_ < minX || ballX_ > maxX) {
     ballX_ = clampFloat(ballX_, minX, maxX);
     ballVx_ = -ballVx_ * 0.88f;

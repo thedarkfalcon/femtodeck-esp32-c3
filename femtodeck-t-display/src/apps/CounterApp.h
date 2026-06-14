@@ -6,6 +6,7 @@
 class CounterApp : public App {
   public:
     CounterApp(uint32_t width, uint32_t height);
+    void render(TFT_eSPI& tft) override;
 
   protected:
     void onAppReset() override;
@@ -15,5 +16,11 @@ class CounterApp : public App {
     bool hasCustomOverlay() const override;
 
   private:
+    void markDirty();
+
     CounterLogic logic_;
+    bool dirty_ = true;
+    bool startDirty_ = true;
+    bool phaseCached_ = false;
+    AppPhase renderedPhase_ = AppPhase::Start;
 };

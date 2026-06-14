@@ -41,15 +41,16 @@ void RandomNumberApp::drawRunning(U8G2& u8g2) {
 
   if (logic_.isEditing()) {
     u8g2.setFont(u8g2_font_5x8_tr);
-    if (logic_.isEditingMin()) {
-        u8g2.drawStr(3, 20, "Set Min:");
-        drawNumber(u8g2, logic_.getMin(), 32);
+    if (logic_.isChoosingIncludeZero()) {
+        u8g2.drawStr(3, 20, "Include 0?");
+        u8g2.setFont(u8g2_font_7x13_tr);
+        u8g2.drawStr(logic_.includesZero() ? 24 : 28, 33, logic_.includesZero() ? "YES" : "NO");
     } else {
-        u8g2.drawStr(3, 20, "Set Max:");
+        u8g2.drawStr(3, 18, "Max:");
         drawNumber(u8g2, logic_.getMax(), 32);
     }
     u8g2.setFont(u8g2_font_4x6_tr);
-    u8g2.drawStr(3, 39, "Tap:+1 Hold:Next");
+    u8g2.drawStr(3, 39, logic_.isChoosingIncludeZero() ? "Tap swap Hold next" : "Tap range Hold roll");
     return;
   }
 
@@ -57,7 +58,7 @@ void RandomNumberApp::drawRunning(U8G2& u8g2) {
   u8g2.setFont(u8g2_font_4x6_tr);
   u8g2.setCursor(3, 8);
   u8g2.print(logic_.getMin());
-  u8g2.print("-");
+  u8g2.print("..");
   u8g2.print(logic_.getMax());
-  u8g2.drawStr(3, 37, "Tap:Roll Hold:Edit");
+  u8g2.drawStr(3, 37, "Tap roll Hold edit");
 }

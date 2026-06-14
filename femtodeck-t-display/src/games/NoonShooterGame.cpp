@@ -5,6 +5,7 @@
 #include <TFT_eSPI.h>
 
 #include "../../PlayerProfile.h"
+#include "../../TDisplayUi.h"
 
 namespace {
 Preferences shooterPrefs;
@@ -34,6 +35,7 @@ void NoonShooterGame::startRound() {
 }
 
 void NoonShooterGame::updateRunning(uint32_t deltaMs, const ButtonInput& b1, const ButtonInput& b2) {
+  (void)b2;
   elapsedMs_ += static_cast<uint16_t>(min<uint32_t>(deltaMs, 200));
 
   if (duelState_ == DuelState::PlayerShot || duelState_ == DuelState::EnemyShot) {
@@ -89,8 +91,9 @@ void NoonShooterGame::updateRunning(uint32_t deltaMs, const ButtonInput& b1, con
   }
 }
 
-void void NoonShooterGame::drawRunning(TFT_eSPI& tft) { tft.fillScreen(TFT_BLACK); { tft.fillScreen(TFT_BLACK);
-  tft.drawRect(, 0, width, height);
+void NoonShooterGame::drawRunning(TFT_eSPI& tft) {
+  TDisplayUi::clear(tft);
+  TDisplayUi::header(tft, "Noon Shooter", TFT_ORANGE, (String("L") + String(level_)).c_str());
   if (duelState_ == DuelState::PlayerShot || duelState_ == DuelState::EnemyShot) {
     const uint8_t frame = min<uint8_t>(4, animMs_ / 160);
     if (frame < 3) {
@@ -99,101 +102,81 @@ void void NoonShooterGame::drawRunning(TFT_eSPI& tft) { tft.fillScreen(TFT_BLACK
     }
   }
 
-  tft.drawLine(1, 31, width - 2, 31);
+  tft.fillCircle(202, 43, 12, TFT_YELLOW);
+  tft.drawLine(0, 105, width, 105, TFT_ORANGE);
   if (duelState_ == DuelState::EnemyShot && animMs_ >= 480) {
-    drawFallenGunslinger(tft, 12, 31, true);
+    drawFallenGunslinger(tft, 62, 104, true);
   } else {
-    drawGunslinger(tft, 12, 28, true);
+    drawGunslinger(tft, 62, 101, true);
   }
   if (duelState_ == DuelState::PlayerShot && animMs_ >= 480) {
-    drawFallenGunslinger(tft, 56, 31, false);
+    drawFallenGunslinger(tft, 178, 104, false);
   } else {
-    drawGunslinger(tft, 56, 28, false);
+    drawGunslinger(tft, 178, 101, false);
   }
 
   if (duelState_ == DuelState::Waiting) {
-    tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(23, 12, "WAIT");
+    TDisplayUi::centered(tft, "WAIT", 42, 4, TFT_YELLOW);
+    TDisplayUi::footer(tft, "Do not draw early");
   } else if (duelState_ == DuelState::Draw) {
-    tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(22, 12, "DRAW!");
+    TDisplayUi::centered(tft, "DRAW!", 42, 4, TFT_RED);
+    TDisplayUi::footer(tft, "B1 fire");
   } else {
-    tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(24, 12, duelState_ == DuelState::PlayerShot ? "HIT" : "SHOT");
+    TDisplayUi::centered(tft, duelState_ == DuelState::PlayerShot ? "HIT" : "SHOT", 42, 4, duelState_ == DuelState::PlayerShot ? TFT_GREEN : TFT_RED);
+    TDisplayUi::footer(tft, (String("Enemy ") + String(enemyDelayMs()) + "ms").c_str());
   }
-
-  tft.setCursor(2, 38);
-  tft.print("L");
-  tft.print(level_);
-  tft.print(" enemy ");
-  tft.print(enemyDelayMs());
 }
 
 void NoonShooterGame::drawStart(TFT_eSPI& tft) { tft.fillScreen(TFT_BLACK);
   loadScores();
-  tft.drawRect(0, 0, width + 2, height);
+  TDisplayUi::clear(tft);
   if (showStartPromptPage()) {
-
-    tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(20, 16, "Press");
-    tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(13, 29, "to Start");
+    TDisplayUi::header(tft, "Noon Shooter", TFT_ORANGE);
+    TDisplayUi::centered(tft, "Press to Start", 56, 2, TFT_WHITE);
+    TDisplayUi::footer(tft, "Wait for DRAW!");
   } else if (showStartScorePage()) {
     char initials[4];
     PlayerProfile::unpackDottedInitials(bestInitials_, initials);
-
-    tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(3, 10, "Top Duel");
-
-    tft.setCursor(3, 23);
-    if (bestLevel_ == 0) {
-      tft.print("--");
-    } else {
-      tft.print(initials);
-      tft.print(" L");
-      tft.print(bestLevel_);
-      tft.setCursor(3, 32);
-      if (bestReactionMs_ == 0) {
-        tft.print("--");
-      } else {
-        tft.print(bestReactionMs_);
-        tft.print("ms");
-      }
-    }
+    TDisplayUi::header(tft, "Top Duel", TFT_ORANGE);
+    String level = bestLevel_ == 0 ? "--" : String(initials) + " L" + String(bestLevel_);
+    String react = bestReactionMs_ == 0 ? "--" : String(bestReactionMs_) + "ms";
+    TDisplayUi::labelValue(tft, 52, "Level", level, TFT_YELLOW);
+    TDisplayUi::labelValue(tft, 80, "React", react, TFT_GREEN);
+    TDisplayUi::footer(tft, "Best level and reaction");
   } else {
-    tft.drawCircle(56, 8, 5);
-    tft.drawLine(4, 31, 67, 31);
-    drawGunslinger(tft, 18, 28, true);
-    drawGunslinger(tft, 46, 28, false);
-
-    tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(3, 10, appTitle());
+    TDisplayUi::header(tft, "Noon Shooter", TFT_ORANGE);
+    tft.fillCircle(202, 43, 12, TFT_YELLOW);
+    tft.drawLine(0, 105, width, 105, TFT_ORANGE);
+    drawGunslinger(tft, 68, 101, true);
+    drawGunslinger(tft, 172, 101, false);
+    TDisplayUi::footer(tft, "Western reaction duel");
   }
 }
 
 void NoonShooterGame::drawEnd(TFT_eSPI& tft) { tft.fillScreen(TFT_BLACK);
-  tft.drawRect(0, 0, width + 2, height);
-
-  tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(3, 9, tooEarly_ ? "Too Early" : "You Lost");
-
-  tft.setCursor(3, 20);
-  tft.print("React ");
+  TDisplayUi::clear(tft);
+  TDisplayUi::header(tft, tooEarly_ ? "Too Early" : "You Lost", TFT_RED);
+  String react = "--";
   if (tooEarly_ || reactionMs_ == 0) {
-    tft.print("--");
+    react = "--";
   } else {
-    tft.print(reactionMs_);
-    tft.print("ms");
+    react = String(reactionMs_) + "ms";
   }
-  tft.setCursor(3, 29);
-  tft.print("Best L");
-  tft.print(bestLevel_);
-  tft.print(" ");
+  String best = "L" + String(bestLevel_) + " ";
   if (bestLevel_ > 0) {
     char initials[4];
     PlayerProfile::unpackDottedInitials(bestInitials_, initials);
-    tft.print(initials);
-    tft.print(" ");
+    best += initials;
+    best += " ";
   }
   if (bestReactionMs_ == 0) {
-    tft.print("--");
+    best += "--";
   } else {
-    tft.print(bestReactionMs_);
-    tft.print("ms");
+    best += String(bestReactionMs_) + "ms";
   }
-  tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(3, 38, "Tap retry Hold menu");
+  TDisplayUi::labelValue(tft, 49, "React", react, TFT_YELLOW);
+  TDisplayUi::labelValue(tft, 78, "Best", best, TFT_GREEN);
+  TDisplayUi::footer(tft, "B1 retry / B1 hold menu");
 }
 
 void NoonShooterGame::loadScores() {
@@ -232,45 +215,44 @@ uint16_t NoonShooterGame::enemyDelayMs() const {
 }
 
 void NoonShooterGame::drawRevolver(TFT_eSPI& tft, bool playerShot, uint8_t frame) {
-  const int cx = 36;
-  const int cy = 20;
-  tft.drawCircle(cx, cy, 10);
-  tft.drawCircle(cx, cy, 4);
+  const int cx = 120;
+  const int cy = 70;
+  tft.drawCircle(cx, cy, 36, TFT_LIGHTGREY);
+  tft.drawCircle(cx, cy, 14, TFT_LIGHTGREY);
   for (uint8_t i = 0; i < 6; i++) {
     const float angle = static_cast<float>(i) * 1.047f;
-    tft.drawPixel(cx + static_cast<int>(cosf(angle) * 7), cy + static_cast<int>(sinf(angle) * 7));
+    tft.fillCircle(cx + static_cast<int>(cosf(angle) * 25), cy + static_cast<int>(sinf(angle) * 25), 3, TFT_DARKGREY);
   }
-  tft.drawCircle(cx, cy, 2);
+  tft.fillCircle(cx, cy, 6, TFT_BLACK);
   if (frame >= 1) {
-    const int flashX = playerShot ? 52 : 20;
-    tft.drawLine(cx, cy, flashX, cy);
-    tft.drawLine(flashX, cy - 3, flashX + (playerShot ? 5 : -5), cy);
-    tft.drawLine(flashX, cy + 3, flashX + (playerShot ? 5 : -5), cy);
+    const int flashX = playerShot ? 188 : 52;
+    tft.drawLine(cx, cy, flashX, cy, TFT_YELLOW);
+    tft.drawLine(flashX, cy - 12, flashX + (playerShot ? 22 : -22), cy, TFT_ORANGE);
+    tft.drawLine(flashX, cy + 12, flashX + (playerShot ? 22 : -22), cy, TFT_ORANGE);
   }
   if (frame >= 2) {
-
-    tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(28, 38, "BANG");
+    TDisplayUi::centered(tft, "BANG", 105, 3, TFT_YELLOW);
   }
 }
 
 void NoonShooterGame::drawGunslinger(TFT_eSPI& tft, int x, int y, bool facingRight) {
-  tft.drawCircle(x, y - 12, 2);
-  tft.drawLine(x, y - 9, x, y - 3);
-  tft.drawLine(x, y - 3, x - 3, y);
-  tft.drawLine(x, y - 3, x + 3, y);
+  tft.drawCircle(x, y - 36, 6, TFT_WHITE);
+  tft.drawLine(x, y - 29, x, y - 10, TFT_WHITE);
+  tft.drawLine(x, y - 10, x - 10, y, TFT_WHITE);
+  tft.drawLine(x, y - 10, x + 10, y, TFT_WHITE);
   if (facingRight) {
-    tft.drawLine(x, y - 8, x + 6, y - 8);
-    tft.drawPixel(x + 7, y - 8);
+    tft.drawLine(x, y - 25, x + 22, y - 25, TFT_WHITE);
+    tft.drawFastHLine(x + 22, y - 26, 8, TFT_LIGHTGREY);
   } else {
-    tft.drawLine(x, y - 8, x - 6, y - 8);
-    tft.drawPixel(x - 7, y - 8);
+    tft.drawLine(x, y - 25, x - 22, y - 25, TFT_WHITE);
+    tft.drawFastHLine(x - 30, y - 26, 8, TFT_LIGHTGREY);
   }
 }
 
 void NoonShooterGame::drawFallenGunslinger(TFT_eSPI& tft, int x, int y, bool facingRight) {
   const int dir = facingRight ? 1 : -1;
-  tft.drawCircle(x, y - 3, 2);
-  tft.drawLine(x + dir * 2, y - 3, x + dir * 11, y - 2);
-  tft.drawLine(x + dir * 5, y - 2, x + dir * 2, y);
-  tft.drawLine(x + dir * 7, y - 2, x + dir * 11, y);
+  tft.drawCircle(x, y - 8, 6, TFT_WHITE);
+  tft.drawLine(x + dir * 7, y - 8, x + dir * 34, y - 4, TFT_WHITE);
+  tft.drawLine(x + dir * 18, y - 4, x + dir * 8, y, TFT_WHITE);
+  tft.drawLine(x + dir * 24, y - 4, x + dir * 36, y, TFT_WHITE);
 }

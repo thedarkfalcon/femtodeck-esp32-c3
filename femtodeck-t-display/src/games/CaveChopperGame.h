@@ -15,9 +15,9 @@ class CaveChopperGame : public App {
     void drawEnd(TFT_eSPI& tft) override;
 
   private:
-    static constexpr uint8_t SEGMENTS = 15;
-    static constexpr uint8_t SEG_W = 5;
-    static constexpr uint8_t GAP_H = 25;
+    static constexpr uint8_t SEGMENTS = 28;
+    static constexpr uint8_t SEG_W = 10;
+    static constexpr uint8_t GAP_H = 68;
 
     struct Segment {
       float x = 0.0f;
@@ -42,7 +42,7 @@ class CaveChopperGame : public App {
     uint16_t bestInitials_ = 0;
     uint16_t rotorMs_ = 0;
     uint16_t randState_ = 0x9231;
-    int lastGapTop_ = 8;
+    int lastGapTop_ = 32;
     bool bestLoaded_ = false;
     bool rotorOn_ = false;
     Segment segments_[SEGMENTS] = {};

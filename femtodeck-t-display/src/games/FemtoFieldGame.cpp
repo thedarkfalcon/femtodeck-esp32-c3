@@ -5,10 +5,12 @@
 #include <TFT_eSPI.h>
 
 #include "../../PlayerProfile.h"
+#include "../../TDisplayUi.h"
 
 namespace {
 constexpr uint8_t FIELD_LED_PIN = 8;
 constexpr bool FIELD_LED_ACTIVE_LOW = true;
+constexpr bool FIELD_LED_AVAILABLE = false;
 constexpr uint8_t EVENT_COUNT = 6;
 constexpr uint16_t EXTRA_LIFE_POINTS = 1000;
 constexpr uint16_t RESULT_LOCK_MS = 650;
@@ -38,6 +40,13 @@ float clampFloat(float value, float low, float high) {
   if (value > high) return high;
   return value;
 }
+
+String formatEventValue(uint8_t eventIndex, uint16_t value) {
+  if (eventIndex <= 1) {
+    return String(value / 1000) + "." + String((value / 100) % 10) + "s";
+  }
+  return String(value / 100) + "." + String((value / 10) % 10) + "m";
+}
 }
 
 FemtoFieldGame::FemtoFieldGame(uint32_t width, uint32_t height)
@@ -48,7 +57,9 @@ bool FemtoFieldGame::hasCustomOverlay() const {
 }
 
 void FemtoFieldGame::onAppReset() {
-  pinMode(FIELD_LED_PIN, OUTPUT);
+  if (FIELD_LED_AVAILABLE) {
+    pinMode(FIELD_LED_PIN, OUTPUT);
+  }
   setFieldLed(false);
   loadRecords();
   eventIndex_ = 0;
@@ -91,7 +102,7 @@ void FemtoFieldGame::startAttempt() {
       hurdleRunnerY_ = 0.0f;
       hurdleVy_ = 0.0f;
       hurdleX_ = static_cast<float>(width + 8);
-      hurdleSpeed_ = 23.0f + static_cast<float>(round_) * 1.4f;
+      hurdleSpeed_ = 76.0f + static_cast<float>(round_) * 4.0f;
       hurdleScored_ = false;
       hurdleHit_ = false;
       hurdleJumped_ = false;
@@ -162,7 +173,7 @@ void FemtoFieldGame::updateRunning(uint32_t deltaMs, const ButtonInput& b1, cons
 
   if (state_ == FieldState::Result) {
     setFieldLed(false);
-    handleResultInput(input);
+    handleResultInput(b1, b2);
     return;
   }
 
@@ -475,6 +486,9 @@ void FemtoFieldGame::addScore(uint16_t amount) {
 }
 
 void FemtoFieldGame::setFieldLed(bool on) {
+  if (!FIELD_LED_AVAILABLE) {
+    return;
+  }
   digitalWrite(FIELD_LED_PIN, FIELD_LED_ACTIVE_LOW ? !on : on);
 }
 
@@ -567,7 +581,8 @@ void FemtoFieldGame::saveEventRecord(uint8_t eventIndex) {
   fieldPrefs.end();
 }
 
-void void FemtoFieldGame::drawRunning(TFT_eSPI& tft) { tft.fillScreen(TFT_BLACK); { tft.fillScreen(TFT_BLACK);
+void FemtoFieldGame::drawRunning(TFT_eSPI& tft) {
+  TDisplayUi::clear(tft);
   switch (state_) {
     case FieldState::EventIntro:
       drawEventIntro(tft);
@@ -600,13 +615,14 @@ void void FemtoFieldGame::drawRunning(TFT_eSPI& tft) { tft.fillScreen(TFT_BLACK)
   }
 }
 
-void FemtoFieldGame::drawStart(TFT_eSPI& tft) { tft.fillScreen(TFT_BLACK);
+void FemtoFieldGame::drawStart(TFT_eSPI& tft) {
+  TDisplayUi::clear(tft);
   loadRecords();
-  tft.drawRect(0, 0, width + 2, height);
   if (showStartPromptPage()) {
-
-    tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(20, 16, "Press");
-    tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(13, 29, "to Start");
+    TDisplayUi::header(tft, appTitle(), TFT_ORANGE);
+    TDisplayUi::centered(tft, "Press", 50, 3, TFT_WHITE);
+    TDisplayUi::centered(tft, "to Start", 78, 2, TFT_LIGHTGREY);
+    TDisplayUi::footer(tft, "B1 start");
     return;
   }
   if (showStartScorePage()) {
@@ -614,207 +630,151 @@ void FemtoFieldGame::drawStart(TFT_eSPI& tft) { tft.fillScreen(TFT_BLACK);
     PlayerProfile::unpackDottedInitials(bestInitials_, initials);
     const uint8_t eventRecord = (millis() / 650) % EVENT_COUNT;
 
-    tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(3, 9, "Top Total");
-
-    tft.setCursor(3, 19);
-    if (bestTotalScore_ == 0) {
-      tft.print("--");
-    } else {
-      tft.print(initials);
-      tft.print(" ");
-      tft.print(bestTotalScore_);
-    }
-    tft.setCursor(3, 29);
-    tft.print(eventName(eventRecord));
-    tft.setCursor(3, 38);
-    tft.print("Best ");
-    tft.print(bestEventScores_[eventRecord]);
+    TDisplayUi::header(tft, "Top Total", TFT_YELLOW);
+    TDisplayUi::largeValue(tft, bestTotalScore_ == 0 ? String("--") : String(bestTotalScore_), 47, TFT_YELLOW);
+    TDisplayUi::centered(tft, bestTotalScore_ == 0 ? String("") : String(initials), 86, 2, TFT_LIGHTGREY);
+    tft.setTextSize(1);
+    tft.setTextColor(TFT_LIGHTGREY, TFT_BLACK);
+    tft.drawString(String(eventName(eventRecord)) + " best " + String(bestEventScores_[eventRecord]), 10, 108);
+    TDisplayUi::footer(tft, "Event records rotate");
     return;
   }
   drawTrackSplash(tft);
 }
 
-void FemtoFieldGame::drawEnd(TFT_eSPI& tft) { tft.fillScreen(TFT_BLACK);
+void FemtoFieldGame::drawEnd(TFT_eSPI& tft) {
+  TDisplayUi::clear(tft);
   setFieldLed(false);
-  tft.drawRect(0, 0, width + 2, height);
-
-  tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(3, 9, "Game Over");
-
-  tft.setCursor(3, 20);
-  tft.print("Score ");
-  tft.print(totalScore_);
-  tft.setCursor(3, 29);
-  tft.print("Best ");
-  tft.print(bestTotalScore_);
-  tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(3, 38, "Tap retry Hold menu");
+  TDisplayUi::header(tft, "Game Over", TFT_RED);
+  TDisplayUi::labelValue(tft, 48, "Score", String(totalScore_), TFT_ORANGE);
+  TDisplayUi::labelValue(tft, 78, "Best", String(bestTotalScore_), TFT_YELLOW);
+  TDisplayUi::footer(tft, "B1 retry  Hold menu");
 }
 
 void FemtoFieldGame::drawScoreHeader(TFT_eSPI& tft) {
-
-  tft.setCursor(2, 6);
-  tft.print("R");
-  tft.print(round_);
-  tft.print(" A");
-  tft.print(attemptsRemaining_);
-  tft.print(" S");
-  tft.print(totalScore_);
+  const String stat = "R" + String(round_) + " A" + String(attemptsRemaining_) + " S" + String(totalScore_);
+  TDisplayUi::header(tft, eventName(eventIndex_), TFT_ORANGE, stat.c_str());
 }
 
 void FemtoFieldGame::drawEventIntro(TFT_eSPI& tft) {
-  tft.drawRect(, 0, width, height);
   drawScoreHeader(tft);
 
-  tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(3, 17, eventName(eventIndex_));
-
-  tft.setCursor(3, 27);
-  tft.print("Qual ");
-  if (eventIndex_ <= 1) {
-    tft.print(qualifyingTarget() / 1000);
-    tft.print(".");
-    tft.print((qualifyingTarget() / 100) % 10);
-    tft.print("s");
-  } else if (eventIndex_ == 5) {
-    tft.print(qualifyingTarget() / 100);
-    tft.print(".");
-    tft.print((qualifyingTarget() / 10) % 10);
-    tft.print("m");
-  } else {
-    tft.print(qualifyingTarget() / 100);
-    tft.print(".");
-    tft.print((qualifyingTarget() / 10) % 10);
-    tft.print("m");
-  }
-  tft.setCursor(3, 38);
+  TDisplayUi::centered(tft, eventName(eventIndex_), 42, 3, TFT_WHITE);
+  TDisplayUi::labelValue(tft, 84, "Qual", formatEventValue(eventIndex_, qualifyingTarget()), TFT_YELLOW);
+  tft.setTextSize(1);
+  tft.setTextColor(TFT_LIGHTGREY, TFT_BLACK);
   if (pressureMode_) {
-    tft.print("Pressure 1 try");
+    tft.drawString("Pressure mode: 1 try", 10, 108);
   } else {
-    tft.print("Attempts left ");
-    tft.print(attemptsRemaining_);
+    tft.drawString("Attempts left " + String(attemptsRemaining_), 10, 108);
   }
+  TDisplayUi::footer(tft, "B1 start event");
 }
 
 void FemtoFieldGame::drawCueSequence(TFT_eSPI& tft) {
-  tft.drawRect(, 0, width, height);
   drawScoreHeader(tft);
   const bool push = cueElapsedMs_ >= cueTargetMs_;
 
-  tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(22, 18, push ? "PUSH" : "WAIT");
+  TDisplayUi::largeValue(tft, push ? String("PUSH") : String("WAIT"), 45, push ? TFT_GREEN : TFT_YELLOW);
   if (messageTimerMs_ > 0) {
-
-    tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(9, 27, "Early x2");
+    TDisplayUi::centered(tft, "Early x2 penalty", 88, 2, TFT_RED);
   } else {
-
-    tft.setCursor(4, 27);
-    tft.print("Q ");
-    tft.print(lastQuality_);
+    TDisplayUi::centered(tft, "Quality " + String(lastQuality_), 89, 2, TFT_LIGHTGREY);
   }
-  const int barW = map(cueDone_, 0, cueTotal_, 0, 60);
-  tft.drawRect(5, 32, 61, 4);
-  if (barW > 0) {
-    tft.fillRect(6, 33, barW, 2);
-  }
+  TDisplayUi::bar(tft, 42, 108, 156, 8, cueTotal_ == 0 ? 0.0f : static_cast<float>(cueDone_) / static_cast<float>(cueTotal_), TFT_CYAN);
   if (cueMode_ == CueMode::LongRun || cueMode_ == CueMode::JavelinRun || cueMode_ == CueMode::Dash) {
-    drawStick(tft, 9 + (cueDone_ * 4), 31, false);
+    drawStick(tft, 22 + (cueDone_ * 16), 112, false);
   }
 }
 
 void FemtoFieldGame::drawHurdles(TFT_eSPI& tft) {
-  tft.drawRect(, 0, width, height);
   drawScoreHeader(tft);
   const bool airborne = hurdleRunnerY_ > 0.2f;
   const int hurdleX = static_cast<int>(hurdleX_);
-  tft.drawLine(2, 33, width - 3, 33);
-  drawStick(tft, 18, 33 - static_cast<int>(hurdleRunnerY_), airborne);
-  if (hurdleX >= static_cast<int>() + 2 && hurdleX <= static_cast<int>(width - 14)) {
-    drawHurdle(tft, hurdleX, 33, hurdleHit_);
+  const int ground = 112;
+  tft.drawFastHLine(0, ground, width, TFT_DARKGREEN);
+  tft.drawFastHLine(0, ground + 1, width, TFT_DARKGREEN);
+  drawStick(tft, 43, ground - static_cast<int>(hurdleRunnerY_ * 1.75f), airborne);
+  if (hurdleX >= 2 && hurdleX <= static_cast<int>(width - 14)) {
+    drawHurdle(tft, hurdleX, ground, hurdleHit_);
   }
   if (!hurdleJumped_) {
-
-    tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(17, 17, "TAP JUMP");
+    TDisplayUi::centered(tft, "TAP JUMP", 42, 2, TFT_YELLOW);
   }
 
-  tft.setCursor(3, 39);
-  tft.print("H");
-  tft.print(hurdleIndex_ + 1);
-  tft.print("/8 C");
-  tft.print(hurdlesCleared_);
+  const String hurdleFooter = "H" + String(hurdleIndex_ + 1) + "/8  Cleared " + String(hurdlesCleared_);
+  TDisplayUi::footer(tft, hurdleFooter.c_str());
 }
 
 void FemtoFieldGame::drawDirectionSelect(TFT_eSPI& tft) {
-  tft.drawRect(, 0, width, height);
   drawScoreHeader(tft);
-  const int cx = 35;
-  const int cy = 24;
-  tft.drawCircle(cx, cy, 3);
-  tft.drawCircle(cx, cy, 15);
+  const int cx = 84;
+  const int cy = 77;
+  tft.drawCircle(cx, cy, 5, TFT_WHITE);
+  tft.drawCircle(cx, cy, 42, TFT_DARKGREY);
   const float rad = directionDeg_ * 0.0174533f;
-  const int bx = cx + static_cast<int>(cosf(rad) * 15);
-  const int by = cy + static_cast<int>(sinf(rad) * 15);
-  tft.drawLine(cx, cy, bx, by);
-  tft.fillCircle(bx, by, 2);
-  tft.drawLine(cx, cy, cx + 17, cy);
+  const int bx = cx + static_cast<int>(cosf(rad) * 42);
+  const int by = cy + static_cast<int>(sinf(rad) * 42);
+  tft.drawLine(cx, cy, bx, by, TFT_YELLOW);
+  tft.fillCircle(bx, by, 4, TFT_YELLOW);
+  tft.drawLine(cx, cy, cx + 50, cy, TFT_GREEN);
 
-  tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(3, 14, "Aim ahead");
+  TDisplayUi::centered(tft, "Aim ahead", 42, 2, TFT_LIGHTGREY);
+  TDisplayUi::footer(tft, "B1 choose throw direction");
 }
 
 void FemtoFieldGame::drawAngleSelect(TFT_eSPI& tft) {
-  tft.drawRect(, 0, width, height);
   drawScoreHeader(tft);
-  drawAngleFan(tft, 12, 32, selectorAngle_);
+  drawAngleFan(tft, 38, 108, selectorAngle_);
 
-  tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(31, 17, "ANGLE");
-
-  tft.setCursor(34, 27);
-  tft.print(static_cast<int>(selectorAngle_));
-  tft.print(" deg");
+  TDisplayUi::centered(tft, "ANGLE", 42, 2, TFT_YELLOW);
+  TDisplayUi::largeValue(tft, String(static_cast<int>(selectorAngle_)) + "deg", 62, TFT_WHITE);
+  TDisplayUi::footer(tft, "B1 select angle");
 }
 
 void FemtoFieldGame::drawJavelinHoldAngle(TFT_eSPI& tft) {
-  tft.drawRect(, 0, width, height);
   drawScoreHeader(tft);
-  drawAngleFan(tft, 12, 32, selectorAngle_);
-  tft.drawLine(8, 33, 32, 24);
+  drawAngleFan(tft, 38, 108, selectorAngle_);
+  tft.drawLine(24, 110, 116, 78, TFT_LIGHTGREY);
 
-  tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(32, 15, holding_ ? "Release" : "Hold");
-
-  tft.setCursor(35, 27);
-  tft.print(static_cast<int>(selectorAngle_));
-  tft.print(" deg");
+  TDisplayUi::centered(tft, holding_ ? "Release" : "Hold", 42, 2, holding_ ? TFT_GREEN : TFT_YELLOW);
+  TDisplayUi::largeValue(tft, String(static_cast<int>(selectorAngle_)) + "deg", 62, TFT_WHITE);
+  TDisplayUi::footer(tft, "Hold for javelin angle");
 }
 
 void FemtoFieldGame::drawHighJumpHold(TFT_eSPI& tft) {
-  tft.drawRect(, 0, width, height);
   drawScoreHeader(tft);
-  tft.drawLine(6, 33, 64, 33);
-  tft.drawLine(48, 16, 48, 33);
-  tft.drawLine(62, 16, 62, 33);
-  tft.drawLine(48, 16, 62, 16);
-  const int jumpY = holding_ ? 31 - min<int>(14, highHoldMs_ / 45) : 33;
-  drawStick(tft, 27, jumpY, holding_);
-
-  tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(5, 15, holding_ ? "Release" : "Hold");
+  const int ground = 112;
+  tft.drawFastHLine(0, ground, width, TFT_DARKGREEN);
+  tft.drawLine(154, 58, 154, ground, TFT_LIGHTGREY);
+  tft.drawLine(196, 58, 196, ground, TFT_LIGHTGREY);
+  tft.drawLine(154, 58, 196, 58, TFT_YELLOW);
+  const int jumpY = holding_ ? ground - min<int>(46, highHoldMs_ / 16) : ground;
+  drawStick(tft, 72, jumpY, holding_);
+  TDisplayUi::centered(tft, holding_ ? "Release" : "Hold", 42, 2, holding_ ? TFT_GREEN : TFT_YELLOW);
+  TDisplayUi::footer(tft, "Hold to set jump angle");
 }
 
 void FemtoFieldGame::drawThrowAnim(TFT_eSPI& tft) {
-  tft.drawRect(, 0, width, height);
+  TDisplayUi::header(tft, "Hammer", TFT_ORANGE);
 
-  tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(3, 7, "Hammer");
-
-  const int originX = 18;
-  const int groundY = 32;
-  tft.drawLine(3, groundY, width - 4, groundY);
+  const int originX = 42;
+  const int groundY = 110;
+  tft.drawFastHLine(0, groundY, width, TFT_DARKGREEN);
   drawStick(tft, originX - 5, groundY, false);
 
   const float progress = min(1.0f, static_cast<float>(throwAnimMs_) / static_cast<float>(THROW_ANIM_MS));
   const float distanceM = static_cast<float>(throwSignedDistanceCm_) / 100.0f;
-  const int travelPx = constrain(static_cast<int>(distanceM * 1.35f), -18, 48);
+  const int travelPx = constrain(static_cast<int>(distanceM * 3.0f), -42, 160);
   const int ballX = originX + static_cast<int>(static_cast<float>(travelPx) * progress);
-  const int arc = static_cast<int>(sinf(progress * 3.14159f) * 13.0f);
+  const int arc = static_cast<int>(sinf(progress * 3.14159f) * 45.0f);
   const int ballY = groundY - 2 - arc;
-  tft.fillCircle(ballX, ballY, 2);
-  tft.drawLine(originX, groundY - 6, ballX, ballY);
+  tft.fillCircle(ballX, ballY, 5, TFT_LIGHTGREY);
+  tft.drawLine(originX, groundY - 16, ballX, ballY, TFT_LIGHTGREY);
 
-  tft.setCursor(38, 18);
+  tft.setTextSize(2);
+  tft.setTextColor(TFT_YELLOW, TFT_BLACK);
+  tft.setCursor(150, 52);
   if (throwSignedDistanceCm_ < 0) {
     tft.print("-");
   }
@@ -822,89 +782,79 @@ void FemtoFieldGame::drawThrowAnim(TFT_eSPI& tft) {
   tft.print(".");
   tft.print((absInt(throwSignedDistanceCm_) / 10) % 10);
   tft.print("m");
+  TDisplayUi::footer(tft, "Throw distance");
 }
 
 void FemtoFieldGame::drawResult(TFT_eSPI& tft) {
-  tft.drawRect(, 0, width, height);
+  TDisplayUi::header(tft, qualified_ ? "Qualified" : "No Qual", qualified_ ? TFT_GREEN : TFT_RED);
 
-  tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(3, 9, qualified_ ? "Qualified" : "No Qual");
-
-  tft.setCursor(3, 18);
+  String value;
   if (resultUnit_ == ResultUnit::Time) {
-    tft.print("Time ");
-    tft.print(resultValue_ / 1000);
-    tft.print(".");
-    tft.print((resultValue_ / 100) % 10);
-    tft.print("s");
+    value = formatEventValue(0, resultValue_);
     if (eventIndex_ == 1) {
-      tft.print(" C");
-      tft.print(hurdlesCleared_);
+      value += " C";
+      value += String(hurdlesCleared_);
     }
   } else {
-    tft.print(resultUnit_ == ResultUnit::Height ? "Height " : "Dist ");
     if (eventIndex_ == 3 && throwSignedDistanceCm_ < 0) {
-      tft.print("-");
+      value += "-";
     }
     const uint16_t displayValue = eventIndex_ == 3 ? static_cast<uint16_t>(absInt(throwSignedDistanceCm_)) : resultValue_;
-    tft.print(displayValue / 100);
-    tft.print(".");
-    tft.print((displayValue / 10) % 10);
-    tft.print("m");
+    value += formatEventValue(eventIndex_, displayValue);
   }
-  tft.setCursor(3, 27);
-  tft.print("Pts ");
-  tft.print(resultScore_);
-  tft.print(" Tot ");
-  tft.print(totalScore_);
-  tft.setCursor(3, 38);
+  TDisplayUi::labelValue(tft, 45, resultUnit_ == ResultUnit::Time ? "Time" : (resultUnit_ == ResultUnit::Height ? "Height" : "Dist"), value, TFT_YELLOW);
+  TDisplayUi::labelValue(tft, 75, "Points", String(resultScore_), TFT_GREEN);
+  TDisplayUi::labelValue(tft, 101, "Total", String(totalScore_), TFT_ORANGE);
   if (qualified_) {
-    tft.print("Tap next");
+    TDisplayUi::footer(tft, "B1 next event");
   } else if (!pressureMode_ && attemptsRemaining_ > 0) {
-    tft.print("Tap retry A");
-    tft.print(attemptsRemaining_);
+    TDisplayUi::footer(tft, ("B1 retry  Attempts " + String(attemptsRemaining_)).c_str());
   } else {
-    tft.print("Tap next 0pts");
+    TDisplayUi::footer(tft, "B1 next  0 points");
   }
 }
 
 void FemtoFieldGame::drawStick(TFT_eSPI& tft, int x, int groundY, bool airborne) {
-  const int y = groundY - 9;
-  tft.drawCircle(x, y - 3, 2);
-  tft.drawLine(x, y - 1, x, y + 5);
-  tft.drawLine(x, y + 2, x + 4, y + (airborne ? 0 : 3));
-  tft.drawLine(x, y + 2, x - 4, y + (airborne ? 1 : 4));
-  tft.drawLine(x, y + 5, x + 4, groundY);
-  tft.drawLine(x, y + 5, x - 3, groundY - (airborne ? 4 : 0));
+  const int y = groundY - 24;
+  tft.drawCircle(x, y - 8, 5, TFT_WHITE);
+  tft.drawLine(x, y - 3, x, y + 14, TFT_WHITE);
+  tft.drawLine(x, y + 5, x + 12, y + (airborne ? 0 : 9), TFT_WHITE);
+  tft.drawLine(x, y + 5, x - 12, y + (airborne ? 2 : 11), TFT_WHITE);
+  tft.drawLine(x, y + 14, x + 12, groundY, TFT_WHITE);
+  tft.drawLine(x, y + 14, x - 9, groundY - (airborne ? 12 : 0), TFT_WHITE);
 }
 
 void FemtoFieldGame::drawHurdle(TFT_eSPI& tft, int x, int groundY, bool fallen) {
   if (fallen) {
-    tft.drawLine(x, groundY - 1, x + 11, groundY - 5);
-    tft.drawLine(x + 1, groundY, x + 4, groundY - 3);
-    tft.drawLine(x + 9, groundY, x + 7, groundY - 4);
+    tft.drawLine(x, groundY - 3, x + 28, groundY - 13, TFT_RED);
+    tft.drawLine(x + 4, groundY, x + 11, groundY - 9, TFT_LIGHTGREY);
+    tft.drawLine(x + 25, groundY, x + 19, groundY - 11, TFT_LIGHTGREY);
     return;
   }
-  tft.drawLine(x, groundY, x + 2, groundY - 9);
-  tft.drawLine(x + 12, groundY, x + 10, groundY - 9);
-  tft.drawLine(x + 2, groundY - 9, x + 10, groundY - 9);
+  tft.drawLine(x, groundY, x + 5, groundY - 28, TFT_WHITE);
+  tft.drawLine(x + 34, groundY, x + 29, groundY - 28, TFT_WHITE);
+  tft.drawLine(x + 5, groundY - 28, x + 29, groundY - 28, TFT_YELLOW);
 }
 
 void FemtoFieldGame::drawAngleFan(TFT_eSPI& tft, int ox, int oy, float angleDeg) {
-  tft.drawLine(ox, oy, ox + 24, oy);
-  tft.drawLine(ox, oy, ox + 18, oy - 18);
+  tft.drawLine(ox, oy, ox + 138, oy, TFT_DARKGREY);
+  tft.drawLine(ox, oy, ox + 98, oy - 72, TFT_DARKGREY);
+  tft.drawArc(ox, oy, 58, 56, 315, 360, TFT_DARKGREY, TFT_BLACK);
   const float rad = -angleDeg * 0.0174533f;
-  tft.drawLine(ox, oy, ox + static_cast<int>(cosf(rad) * 24), oy + static_cast<int>(sinf(rad) * 24));
+  const int x2 = ox + static_cast<int>(cosf(rad) * 118);
+  const int y2 = oy + static_cast<int>(sinf(rad) * 118);
+  tft.drawLine(ox, oy, x2, y2, TFT_YELLOW);
+  tft.fillCircle(x2, y2, 4, TFT_YELLOW);
 }
 
 void FemtoFieldGame::drawTrackSplash(TFT_eSPI& tft) {
-
-  tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(3, 9, "Femto Field");
-
-  tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(3, 17, "Track and Field");
-  tft.drawLine(3, 32, 67, 32);
-  tft.drawLine(3, 36, 67, 36);
-  drawStick(tft, 18, 32, false);
-  drawHurdle(tft, 40, 32);
-  tft.drawLine(53, 22, 64, 14);
-  tft.drawPixel(66, 13);
+  TDisplayUi::header(tft, "Femto Field", TFT_ORANGE);
+  TDisplayUi::centered(tft, "Track & Field", 36, 2, TFT_LIGHTGREY);
+  tft.drawFastHLine(0, 110, width, TFT_DARKGREEN);
+  tft.drawFastHLine(0, 118, width, TFT_DARKGREEN);
+  drawStick(tft, 55, 110, false);
+  drawHurdle(tft, 116, 110);
+  tft.drawLine(174, 82, 219, 50, TFT_YELLOW);
+  tft.fillCircle(224, 47, 3, TFT_LIGHTGREY);
+  TDisplayUi::footer(tft, "Six arcade events");
 }

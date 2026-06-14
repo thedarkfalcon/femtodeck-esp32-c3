@@ -48,6 +48,7 @@ class BlackjackGame : public App {
     void addPlayerCard();
     void addDealerCard();
     uint8_t handValue(const uint8_t* cards, uint8_t count) const;
+    bool isNaturalBlackjack(const uint8_t* cards, uint8_t count) const;
     void cycleBet();
     void stand();
     void settleRound();
@@ -71,4 +72,13 @@ class BlackjackGame : public App {
     uint16_t actionTimerMs_ = 0;
     uint8_t dealStep_ = 0;
     bool bestLoaded_ = false;
+    bool runningDrawDirty_ = true;
+    uint8_t renderedHandState_ = 255;
+    uint8_t renderedResult_ = 255;
+    uint8_t renderedPlayerCount_ = 255;
+    uint8_t renderedDealerCount_ = 255;
+    uint8_t renderedDealStep_ = 255;
+    uint8_t renderedDeckRemaining_ = 255;
+    int16_t renderedBankroll_ = -32768;
+    int16_t renderedBet_ = -32768;
 };

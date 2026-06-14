@@ -14,15 +14,21 @@ class PetSimulatorApp : public App {
     bool hasCustomOverlay() const override;
 
   private:
-    enum class Mode { ChoosePet, Menu, Stats, Message };
+    enum class Mode { ChoosePet, Menu, Stats, Message, PlayScene, Dead };
 
     void loadPet();
     void savePet();
+    void resetCareStats();
     void applyAction();
     void tickCare(uint32_t deltaMs);
     void updateIdle(uint32_t deltaMs);
+    void updatePlayScene(uint32_t deltaMs);
+    void startPlayScene();
     void drawPet(TFT_eSPI& tft, int x, int y);
+    void drawPoop(TFT_eSPI& tft, int x, int y);
+    void drawPoops(TFT_eSPI& tft);
     void drawBar(TFT_eSPI& tft, int x, int y, const char* label, uint8_t value);
+    void drawLowHealthWarning(TFT_eSPI& tft);
 
     Mode mode_ = Mode::ChoosePet;
     uint8_t petType_ = 0;
@@ -33,14 +39,18 @@ class PetSimulatorApp : public App {
     uint8_t clean_ = 80;
     uint8_t health_ = 100;
     uint8_t poop_ = 0;
-    uint16_t careMs_ = 0;
-    uint16_t messageMs_ = 0;
-    uint16_t idleMs_ = 0;
-    uint16_t wanderMs_ = 0;
-    int8_t petX_ = 34;
-    int8_t petY_ = 21;
+    uint32_t careMs_ = 0;
+    uint32_t messageMs_ = 0;
+    uint32_t idleMs_ = 0;
+    uint32_t wanderMs_ = 0;
+    uint32_t playMs_ = 0;
+    uint32_t playStepMs_ = 0;
+    int16_t petX_ = 120;
+    int16_t petY_ = 65;
     int8_t petDx_ = 1;
     int8_t petDy_ = 0;
+    int16_t toyX_ = 160;
+    int16_t toyY_ = 72;
     bool idleMode_ = false;
     const char* message_ = "";
     bool loaded_ = false;

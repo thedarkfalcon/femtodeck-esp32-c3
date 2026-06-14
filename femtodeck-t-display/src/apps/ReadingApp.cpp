@@ -5,9 +5,20 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "../../TDisplayUi.h"
+
 namespace {
-constexpr uint8_t LINES_PER_PAGE = 3;
-constexpr uint8_t MAX_LINE_CHARS = 17;
+constexpr uint8_t MAX_LINE_CHARS = 80;
+
+struct ReadingLayout {
+  uint8_t textSize;
+  uint8_t lineHeight;
+  uint8_t glyphHeight;
+  uint8_t linesPerPage;
+  int16_t firstY;
+  int16_t textX;
+  int16_t maxWidth;
+};
 
 struct Reading {
   const char* ref;
@@ -76,6 +87,48 @@ const Reading READINGS[] = {
 
 constexpr uint8_t READING_COUNT = sizeof(READINGS) / sizeof(READINGS[0]);
 
+ReadingLayout makeReadingLayout(uint32_t width, uint32_t height, TDisplayUi::TextSize size) {
+  ReadingLayout layout;
+  layout.textSize = size == TDisplayUi::TextSize::Large ? 2 : 1;
+  layout.lineHeight = size == TDisplayUi::TextSize::Large ? 20 : 10;
+  layout.glyphHeight = size == TDisplayUi::TextSize::Large ? 16 : 8;
+  layout.linesPerPage = 1;
+  layout.firstY = 42;
+  layout.textX = 12;
+  layout.maxWidth = static_cast<int16_t>(width) - 24;
+
+  const int16_t footerTop = static_cast<int16_t>(height) - 17;
+  const int16_t usable = footerTop - layout.firstY - layout.glyphHeight;
+  if (usable > 0) {
+    layout.linesPerPage = static_cast<uint8_t>(usable / layout.lineHeight + 1);
+  }
+  return layout;
+}
+
+void drawShell(TFT_eSPI& tft, uint32_t width, uint32_t height, const char* title, uint8_t index = 0, uint8_t count = 0) {
+  tft.fillScreen(TFT_BLACK);
+  tft.setTextDatum(TL_DATUM);
+  tft.setTextSize(2);
+  tft.setTextColor(TFT_ORANGE, TFT_BLACK);
+  tft.drawString(title, 12, 8);
+  if (count > 0) {
+    char counter[10];
+    snprintf(counter, sizeof(counter), "%u/%u", index + 1, count);
+    tft.setTextSize(1);
+    tft.setTextColor(TFT_LIGHTGREY, TFT_BLACK);
+    tft.drawString(counter, width - tft.textWidth(counter) - 12, 12);
+  }
+  tft.drawFastHLine(12, 34, width - 24, TFT_DARKGREY);
+  tft.drawRect(0, 0, width, height, TFT_DARKGREY);
+}
+
+void drawFooter(TFT_eSPI& tft, uint32_t width, uint32_t height, const char* text) {
+  tft.fillRect(0, height - 17, width, 17, TFT_BLACK);
+  tft.setTextSize(1);
+  tft.setTextColor(TFT_LIGHTGREY, TFT_BLACK);
+  tft.drawString(text, 12, height - 13);
+}
+
 const char* skipSpaces(const char* cursor) {
   while (*cursor == ' ') {
     cursor++;
@@ -83,13 +136,13 @@ const char* skipSpaces(const char* cursor) {
   return cursor;
 }
 
-bool nextWrappedLine(const char*& cursor, char* line, size_t lineSize) {
+bool nextWrappedLine(TFT_eSPI& tft, const char*& cursor, char* line, size_t lineSize, int maxWidth) {
   cursor = skipSpaces(cursor);
   if (*cursor == '\0' || lineSize == 0) {
     return false;
   }
 
-  uint8_t lineLen = 0;
+  String current;
   const char* scan = cursor;
 
   while (*scan != '\0') {
@@ -104,30 +157,45 @@ bool nextWrappedLine(const char*& cursor, char* line, size_t lineSize) {
       wordLen++;
     }
 
-    const int separator = lineLen > 0 ? 1 : 0;
-    const int available = (int)MAX_LINE_CHARS - (int)lineLen - separator;
-    if (available < (int)wordLen) {
-      if (lineLen == 0) {
-        const uint8_t copyLen = min<uint8_t>(wordLen, min<uint8_t>(MAX_LINE_CHARS, lineSize - 1));
-        memcpy(line, wordStart, copyLen);
-        lineLen = copyLen;
-        scan = wordStart + copyLen;
+    String word;
+    word.reserve(wordLen);
+    for (uint8_t i = 0; i < wordLen; i++) {
+      word += wordStart[i];
+    }
+
+    String candidate = current;
+    if (candidate.length() > 0) {
+      candidate += ' ';
+    }
+    candidate += word;
+
+    if (tft.textWidth(candidate) > maxWidth) {
+      if (current.length() == 0) {
+        String chunk;
+        for (uint8_t i = 0; i < wordLen && chunk.length() < lineSize - 1; i++) {
+          String nextChunk = chunk;
+          nextChunk += wordStart[i];
+          if (chunk.length() > 0 && tft.textWidth(nextChunk) > maxWidth) {
+            break;
+          }
+          chunk = nextChunk;
+        }
+        if (chunk.length() == 0 && wordLen > 0) {
+          chunk += wordStart[0];
+        }
+        current = chunk;
+        scan = wordStart + current.length();
       }
       break;
     }
 
-    if (lineLen > 0 && lineLen < lineSize - 1) {
-      line[lineLen++] = ' ';
-    }
-    const uint8_t copyLen = min<uint8_t>(wordLen, lineSize - lineLen - 1);
-    memcpy(line + lineLen, wordStart, copyLen);
-    lineLen += copyLen;
+    current = candidate;
     scan = wordStart + wordLen;
   }
 
-  line[lineLen] = '\0';
+  current.toCharArray(line, lineSize);
   cursor = scan;
-  return lineLen > 0;
+  return current.length() > 0;
 }
 }
 
@@ -142,51 +210,89 @@ bool ReadingApp::startsRunningImmediately() const {
   return true;
 }
 
+void ReadingApp::render(TFT_eSPI& tft) {
+  const AppPhase currentPhase = phase();
+  if (!phaseCached_ || currentPhase != renderedPhase_) {
+    phaseCached_ = true;
+    renderedPhase_ = currentPhase;
+    dirty_ = true;
+    startDirty_ = true;
+  }
+  App::render(tft);
+}
+
+void ReadingApp::markDirty() {
+  dirty_ = true;
+}
+
 void ReadingApp::onAppReset() {
   selection_ = 0;
   page_ = 0;
+  pageHasMore_ = false;
   mode_ = Mode::Select;
+  markDirty();
 }
 
 void ReadingApp::updateRunning(uint32_t deltaMs, const ButtonInput& b1, const ButtonInput& b2) {
   (void)deltaMs;
 
+  if (b2.click) {
+    if (mode_ == Mode::Select) {
+      requestExitToMenu();
+    } else {
+      mode_ = Mode::Select;
+      markDirty();
+    }
+    return;
+  }
+
   if (mode_ == Mode::Select) {
-    if (input.click) {
+    if (b1.click) {
       selection_ = (selection_ + 1) % (READING_COUNT + 1);
-    } else if (input.longPress) {
+      markDirty();
+    } else if (b1.longPress) {
       if (selection_ >= READING_COUNT) {
         requestExitToMenu();
       } else {
         page_ = 0;
+        pageHasMore_ = true;
         mode_ = Mode::Read;
+        markDirty();
       }
     }
     return;
   }
 
   if (mode_ == Mode::Read) {
-    if (input.longPress) {
+    if (b1.longPress) {
       mode_ = Mode::Select;
-    } else if (input.click) {
-      if (hasMoreAfterPage(READINGS[selection_].text, page_)) {
+      markDirty();
+    } else if (b1.click) {
+      if (pageHasMore_) {
         page_++;
       } else {
         mode_ = Mode::Complete;
       }
+      markDirty();
     }
     return;
   }
 
-  if (input.longPress) {
+  if (b1.longPress) {
     mode_ = Mode::Select;
-  } else if (input.click) {
+    markDirty();
+  } else if (b1.click) {
     page_ = 0;
+    pageHasMore_ = true;
     mode_ = Mode::Read;
+    markDirty();
   }
 }
 
 void ReadingApp::drawRunning(TFT_eSPI& tft) {
+  if (!dirty_) {
+    return;
+  }
   if (mode_ == Mode::Select) {
     drawSelection(tft);
   } else if (mode_ == Mode::Read) {
@@ -194,99 +300,82 @@ void ReadingApp::drawRunning(TFT_eSPI& tft) {
   } else {
     drawComplete(tft);
   }
+  dirty_ = false;
 }
 
 void ReadingApp::drawStart(TFT_eSPI& tft) {
-  drawSelection(tft);
-}
-
-bool ReadingApp::hasMoreAfterPage(const char* text, uint8_t page) const {
-  const char* cursor = text;
-  char line[MAX_LINE_CHARS + 1];
-  const uint8_t linesToConsume = (page + 1) * LINES_PER_PAGE;
-
-  for (uint8_t i = 0; i < linesToConsume; i++) {
-    if (!nextWrappedLine(cursor, line, sizeof(line))) {
-      return false;
-    }
+  if (!startDirty_) {
+    return;
   }
-
-  return *skipSpaces(cursor) != '\0';
+  drawSelection(tft);
+  startDirty_ = false;
 }
 
 void ReadingApp::drawCenteredText(TFT_eSPI& tft, int y, const char* text) const {
-  int x = ((int)width + 2 - (int)tft.textWidth(text)) / 2;
+  int x = ((int)width - (int)tft.textWidth(text)) / 2;
   if (x < 2) {
     x = 2;
   }
-  tft.drawString(x, y, text);
+  tft.drawString(text, x, y);
 }
 
 void ReadingApp::drawSelection(TFT_eSPI& tft) const {
-  tft.drawRect(0, 0, width + 2, height);
-
-  tft.drawString(3, 9, "Reading");
-
-
-  char counter[8];
-  snprintf(counter, sizeof(counter), "%u/%u", selection_ + 1, READING_COUNT + 1);
-  tft.drawString(width + 2 - tft.textWidth(counter) - 3, 9, counter);
+  drawShell(tft, width, height, "Reading", selection_, READING_COUNT + 1);
 
   if (selection_ >= READING_COUNT) {
-
-    drawCenteredText(tft, 23, "Back");
-
-    tft.drawString(3, 38, "Hold menu");
+    tft.setTextSize(3);
+    tft.setTextColor(TFT_WHITE, TFT_BLACK);
+    drawCenteredText(tft, 58, "Back");
+    drawFooter(tft, width, height, "B1 hold menu  B2 back");
     return;
   }
 
-
-  if (tft.textWidth(READINGS[selection_].ref) > width - 4) {
-
-  }
-  drawCenteredText(tft, 23, READINGS[selection_].ref);
-
-
-  tft.drawString(3, 31, "Tap next");
-  tft.drawString(3, 38, "Hold open");
+  tft.setTextSize(3);
+  tft.setTextColor(TFT_WHITE, TFT_BLACK);
+  drawCenteredText(tft, 54, READINGS[selection_].ref);
+  tft.setTextSize(1);
+  tft.setTextColor(TFT_LIGHTGREY, TFT_BLACK);
+  tft.drawString("Public domain BSB/BSP text", 34, 91);
+  drawFooter(tft, width, height, "B1 next/open  B2 back");
 }
 
-bool ReadingApp::drawWrappedPage(TFT_eSPI& tft, const char* text, uint8_t page, int firstY) const {
+bool drawWrappedPage(TFT_eSPI& tft, const char* text, uint8_t page, const ReadingLayout& layout) {
   const char* cursor = text;
   char line[MAX_LINE_CHARS + 1];
-  const uint8_t linesToSkip = page * LINES_PER_PAGE;
+  const uint16_t linesToSkip = static_cast<uint16_t>(page) * layout.linesPerPage;
 
-  for (uint8_t i = 0; i < linesToSkip; i++) {
-    if (!nextWrappedLine(cursor, line, sizeof(line))) {
+  for (uint16_t i = 0; i < linesToSkip; i++) {
+    if (!nextWrappedLine(tft, cursor, line, sizeof(line), layout.maxWidth)) {
       return false;
     }
   }
 
-  for (uint8_t displayLine = 0; displayLine < LINES_PER_PAGE; displayLine++) {
-    if (!nextWrappedLine(cursor, line, sizeof(line))) {
+  for (uint8_t displayLine = 0; displayLine < layout.linesPerPage; displayLine++) {
+    if (!nextWrappedLine(tft, cursor, line, sizeof(line), layout.maxWidth)) {
       break;
     }
-    tft.drawString(2, firstY + displayLine * 7, line);
+    tft.drawString(line, layout.textX, layout.firstY + displayLine * layout.lineHeight);
   }
 
   return *skipSpaces(cursor) != '\0';
 }
 
-void ReadingApp::drawReading(TFT_eSPI& tft) const {
-  tft.drawRect(0, 0, width + 2, height);
-
-  tft.drawString(2, 7, READINGS[selection_].ref);
-  const bool hasMore = drawWrappedPage(tft, READINGS[selection_].text, page_, 15);
-
-  tft.drawString(3, 38, hasMore ? "Tap more" : "Tap END");
+void ReadingApp::drawReading(TFT_eSPI& tft) {
+  drawShell(tft, width, height, READINGS[selection_].ref);
+  const ReadingLayout layout = makeReadingLayout(width, height, TDisplayUi::loadTextSize());
+  tft.setTextSize(layout.textSize);
+  tft.setTextColor(TFT_WHITE, TFT_BLACK);
+  pageHasMore_ = drawWrappedPage(tft, READINGS[selection_].text, page_, layout);
+  drawFooter(tft, width, height, pageHasMore_ ? "B1 more  B2 list" : "B1 end  B2 list");
 }
 
 void ReadingApp::drawComplete(TFT_eSPI& tft) const {
-  tft.drawRect(0, 0, width + 2, height);
-
-  drawCenteredText(tft, 17, "END");
-
-  drawCenteredText(tft, 27, READINGS[selection_].ref);
-  tft.drawString(3, 34, "Tap restart");
-  tft.drawString(3, 39, "Hold list");
+  drawShell(tft, width, height, "Reading");
+  tft.setTextSize(4);
+  tft.setTextColor(TFT_GREEN, TFT_BLACK);
+  drawCenteredText(tft, 48, "END");
+  tft.setTextSize(1);
+  tft.setTextColor(TFT_WHITE, TFT_BLACK);
+  drawCenteredText(tft, 91, READINGS[selection_].ref);
+  drawFooter(tft, width, height, "B1 restart  B2 list");
 }

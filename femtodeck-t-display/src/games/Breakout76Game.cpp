@@ -5,12 +5,15 @@
 #include <TFT_eSPI.h>
 
 #include "../../PlayerProfile.h"
+#include "../../TDisplayUi.h"
 
 namespace {
 Preferences breakout76Prefs;
-constexpr uint8_t BRICK_W = 7;
-constexpr uint8_t BRICK_H = 3;
-constexpr uint8_t PADDLE_Y = 36;
+constexpr uint8_t BRICK_W = 23;
+constexpr uint8_t BRICK_H = 9;
+constexpr uint8_t BRICK_X = 17;
+constexpr uint8_t BRICK_Y = 34;
+constexpr uint8_t PADDLE_Y = 121;
 }
 
 Breakout76Game::Breakout76Game(uint32_t width, uint32_t height)
@@ -20,12 +23,16 @@ bool Breakout76Game::hasCustomOverlay() const {
   return true;
 }
 
+bool Breakout76Game::consumesButton2HoldInRunning() const {
+  return true;
+}
+
 void Breakout76Game::onAppReset() {
   loadBestScore();
-  paddleX_ = 25.0f;
+  paddleX_ = 99.0f;
   paddleVel_ = 0.0f;
   paddleDir_ = 1;
-  paddleW_ = 14;
+  paddleW_ = 42;
   wideTimerMs_ = 0;
   level_ = 1;
   score_ = 0;
@@ -45,7 +52,7 @@ void Breakout76Game::buildLevel() {
       if (on) bricksLeft_++;
     }
   }
-  paddleX_ = 25.0f;
+  paddleX_ = static_cast<float>((width - paddleW_) / 2);
   for (uint8_t i = 0; i < BALLS; i++) balls_[i].active = false;
   launchBall(0, false);
 }
@@ -53,10 +60,10 @@ void Breakout76Game::buildLevel() {
 void Breakout76Game::launchBall(uint8_t slot, bool alternate) {
   if (slot >= BALLS) return;
   balls_[slot].active = true;
-  balls_[slot].x = 18.0f + static_cast<float>(random(0, 34));
-  balls_[slot].y = 25.0f + static_cast<float>(random(0, 4));
-  const float speed = 21.0f + static_cast<float>(level_) * 1.5f;
-  balls_[slot].vx = (alternate ? -1.0f : 1.0f) * (13.0f + static_cast<float>(random(0, 9)));
+  balls_[slot].x = 55.0f + static_cast<float>(random(0, 125));
+  balls_[slot].y = 92.0f + static_cast<float>(random(0, 8));
+  const float speed = 68.0f + static_cast<float>(level_) * 4.0f;
+  balls_[slot].vx = (alternate ? -1.0f : 1.0f) * (38.0f + static_cast<float>(random(0, 23)));
   balls_[slot].vy = -speed;
 }
 
@@ -81,7 +88,7 @@ void Breakout76Game::spawnPower(float x, float y) {
 
 void Breakout76Game::applyPower(uint8_t type) {
   if (type == 0) {
-    paddleW_ = 22;
+    paddleW_ = 64;
     wideTimerMs_ = 9000;
     return;
   }
@@ -95,15 +102,16 @@ void Breakout76Game::applyPower(uint8_t type) {
 
 void Breakout76Game::updateRunning(uint32_t deltaMs, const ButtonInput& b1, const ButtonInput& b2) {
   const float dt = static_cast<float>(deltaMs) * 0.001f;
-  if (b1.click) paddleDir_ = -paddleDir_;
+  const int8_t inputDir = static_cast<int8_t>(b1.down ? 1 : 0) - static_cast<int8_t>(b2.down ? 1 : 0);
+  paddleDir_ = inputDir;
 
   if (wideTimerMs_ > 0) {
     wideTimerMs_ = deltaMs >= wideTimerMs_ ? 0 : wideTimerMs_ - deltaMs;
-    if (wideTimerMs_ == 0) paddleW_ = 14;
+    if (wideTimerMs_ == 0) paddleW_ = 42;
   }
 
   const float oldPaddle = paddleX_;
-  paddleX_ += static_cast<float>(paddleDir_) * 34.0f * dt;
+  paddleX_ += static_cast<float>(inputDir) * 118.0f * dt;
   if (paddleX_ < 1.0f) {
     paddleX_ = 1.0f;
   }
@@ -114,7 +122,7 @@ void Breakout76Game::updateRunning(uint32_t deltaMs, const ButtonInput& b1, cons
 
   for (uint8_t p = 0; p < POWERUPS; p++) {
     if (!powers_[p].active) continue;
-    powers_[p].y += 13.0f * dt;
+    powers_[p].y += 42.0f * dt;
     if (powers_[p].y >= PADDLE_Y - 1 && powers_[p].x >= paddleX_ && powers_[p].x <= paddleX_ + paddleW_) {
       applyPower(powers_[p].type);
       powers_[p].active = false;
@@ -140,9 +148,9 @@ void Breakout76Game::updateRunning(uint32_t deltaMs, const ButtonInput& b1, cons
 
     if (b.y >= PADDLE_Y - 2 && b.y <= PADDLE_Y + 1 && b.x >= paddleX_ && b.x <= paddleX_ + paddleW_ && b.vy > 0) {
       const float hit = ((b.x - paddleX_) / static_cast<float>(paddleW_)) - 0.5f;
-      b.vx = hit * 42.0f + paddleVel_ * 0.28f;
-      b.vy = -(24.0f + static_cast<float>(level_) * 1.4f);
-      b.y = PADDLE_Y - 3;
+      b.vx = hit * 115.0f + paddleVel_ * 0.22f;
+      b.vy = -(70.0f + static_cast<float>(level_) * 4.0f);
+      b.y = PADDLE_Y - 4;
     }
 
     const int bx = static_cast<int>(b.x);
@@ -151,9 +159,9 @@ void Breakout76Game::updateRunning(uint32_t deltaMs, const ButtonInput& b1, cons
     for (uint8_t r = 0; r < ROWS && !hitBrick; r++) {
       for (uint8_t c = 0; c < COLS; c++) {
         if (!bricks_[r][c]) continue;
-        const int x = 3 + c * BRICK_W;
-        const int y = 3 + r * BRICK_H;
-        if (bx >= x && bx < x + BRICK_W - 1 && by >= y && by < y + BRICK_H - 1) {
+        const int x = BRICK_X + c * BRICK_W;
+        const int y = BRICK_Y + r * BRICK_H;
+        if (bx >= x && bx < x + BRICK_W - 2 && by >= y && by < y + BRICK_H - 2) {
           bricks_[r][c] = false;
           bricksLeft_--;
           score_++;
@@ -182,81 +190,98 @@ void Breakout76Game::updateRunning(uint32_t deltaMs, const ButtonInput& b1, cons
   if (activeBallCount() == 0) endApp();
 }
 
-void void Breakout76Game::drawRunning(TFT_eSPI& tft) { tft.fillScreen(TFT_BLACK); { tft.fillScreen(TFT_BLACK);
-  tft.drawRect(, 0, width, height);
-  for (uint8_t r = 0; r < ROWS; r++) {
-    for (uint8_t c = 0; c < COLS; c++) {
-      if (bricks_[r][c]) tft.fillRect(3 + c * BRICK_W, 3 + r * BRICK_H, BRICK_W - 1, BRICK_H - 1);
-    }
+void Breakout76Game::drawRunning(TFT_eSPI& tft) {
+  static TFT_eSprite frame(&tft);
+  static bool frameTried = false;
+  static bool frameReady = false;
+  if (!frameTried) {
+    frameTried = true;
+    frame.setColorDepth(8);
+    frameReady = frame.createSprite(width, height) != nullptr;
   }
-  for (uint8_t p = 0; p < POWERUPS; p++) {
-    if (powers_[p].active) {
-      if (powers_[p].type == 0) tft.fillRect(static_cast<int>(powers_[p].x), static_cast<int>(powers_[p].y), 4, 2);
-      else tft.drawCircle(static_cast<int>(powers_[p].x), static_cast<int>(powers_[p].y), 2);
-    }
-  }
-  for (uint8_t i = 0; i < BALLS; i++) {
-    if (balls_[i].active) tft.fillRect(clampInt(static_cast<int>(balls_[i].x), 1, width - 2), clampInt(static_cast<int>(balls_[i].y), 1, height - 2), 2, 2);
-  }
-  tft.fillRect(static_cast<int>(paddleX_), PADDLE_Y, paddleW_, 2);
 
-  tft.setCursor(2, 6);
-  tft.print("L");
-  tft.print(level_);
-  tft.print(" ");
-  tft.print(score_);
+  auto drawScene = [this](auto& canvas) {
+    TDisplayUi::clear(canvas);
+    const String stat = "L" + String(level_) + "  " + String(score_);
+    TDisplayUi::header(canvas, "Breakout '76", TFT_ORANGE, stat.c_str());
+    canvas.drawRect(4, TDisplayUi::HEADER_H + 3, width - 8, height - TDisplayUi::HEADER_H - 7, TFT_DARKGREY);
+    for (uint8_t r = 0; r < ROWS; r++) {
+      for (uint8_t c = 0; c < COLS; c++) {
+        if (!bricks_[r][c]) continue;
+        const uint16_t color = r == 0 ? TFT_RED : (r == 1 ? TFT_ORANGE : (r == 2 ? TFT_YELLOW : (r == 3 ? TFT_GREEN : TFT_CYAN)));
+        canvas.fillRoundRect(BRICK_X + c * BRICK_W, BRICK_Y + r * BRICK_H, BRICK_W - 3, BRICK_H - 2, 2, color);
+      }
+    }
+    for (uint8_t p = 0; p < POWERUPS; p++) {
+      if (powers_[p].active) {
+        if (powers_[p].type == 0) {
+          canvas.fillRoundRect(static_cast<int>(powers_[p].x) - 5, static_cast<int>(powers_[p].y), 11, 7, 2, TFT_GREEN);
+        } else {
+          canvas.drawCircle(static_cast<int>(powers_[p].x), static_cast<int>(powers_[p].y), 5, TFT_MAGENTA);
+          canvas.drawLine(static_cast<int>(powers_[p].x) - 4, static_cast<int>(powers_[p].y), static_cast<int>(powers_[p].x) + 4, static_cast<int>(powers_[p].y), TFT_MAGENTA);
+        }
+      }
+    }
+    for (uint8_t i = 0; i < BALLS; i++) {
+      if (balls_[i].active) {
+        canvas.fillCircle(clampInt(static_cast<int>(balls_[i].x), 6, width - 7), clampInt(static_cast<int>(balls_[i].y), 31, height - 7), 4, TFT_WHITE);
+      }
+    }
+    canvas.fillRoundRect(static_cast<int>(paddleX_), PADDLE_Y, paddleW_, 6, 3, wideTimerMs_ > 0 ? TFT_GREEN : TFT_WHITE);
+  };
+
+  if (frameReady) {
+    drawScene(frame);
+    frame.pushSprite(0, 0);
+  } else {
+    drawScene(tft);
+  }
 }
 
-void Breakout76Game::drawStart(TFT_eSPI& tft) { tft.fillScreen(TFT_BLACK);
+void Breakout76Game::drawStart(TFT_eSPI& tft) {
+  TDisplayUi::clear(tft);
   loadBestScore();
-  tft.drawRect(0, 0, width + 2, height);
   if (showStartPromptPage()) {
-
-    tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(20, 16, "Press");
-    tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(13, 29, "to Start");
+    TDisplayUi::header(tft, appTitle(), TFT_ORANGE);
+    TDisplayUi::centered(tft, "Press", 50, 3, TFT_WHITE);
+    TDisplayUi::centered(tft, "to Start", 78, 2, TFT_LIGHTGREY);
+    TDisplayUi::footer(tft, "B1 start");
   } else if (showStartScorePage()) {
     char initials[4];
     PlayerProfile::unpackDottedInitials(bestInitials_, initials);
 
-    tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(3, 10, "Top Bricks");
-
-    tft.setCursor(3, 24);
-    if (bestScore_ == 0) tft.print("--");
-    else {
-      tft.print(initials);
-      tft.print(" ");
-      tft.print(bestScore_);
-    }
+    TDisplayUi::header(tft, "Top Bricks", TFT_YELLOW);
+    TDisplayUi::largeValue(tft, bestScore_ == 0 ? String("--") : String(bestScore_), 54, TFT_YELLOW);
+    TDisplayUi::centered(tft, bestScore_ == 0 ? String("") : String(initials), 96, 2, TFT_LIGHTGREY);
+    TDisplayUi::footer(tft, "Best total bricks");
   } else {
-    tft.fillRect(6, 28, 20, 2);
-    tft.fillCircle(44, 17, 2);
-    tft.drawLine(12, 24, 30, 15);
-    tft.drawLine(30, 15, 44, 17);
-    tft.drawPixel(49, 15);
-    tft.drawPixel(53, 13);
-
-    tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(3, 9, appTitle());
+    TDisplayUi::header(tft, appTitle(), TFT_ORANGE);
+    for (uint8_t r = 0; r < 4; r++) {
+      for (uint8_t c = 0; c < 6; c++) {
+        const uint16_t color = r == 0 ? TFT_RED : (r == 1 ? TFT_YELLOW : (r == 2 ? TFT_GREEN : TFT_CYAN));
+        tft.fillRoundRect(42 + c * 24, 48 + r * 11, 20, 8, 2, color);
+      }
+    }
+    tft.fillRoundRect(84, 101, 70, 7, 3, TFT_WHITE);
+    tft.fillCircle(174, 72, 5, TFT_WHITE);
+    tft.drawLine(154, 101, 174, 72, TFT_LIGHTGREY);
+    TDisplayUi::footer(tft, "B1 right  B2 left");
   }
 }
 
-void Breakout76Game::drawEnd(TFT_eSPI& tft) { tft.fillScreen(TFT_BLACK);
-  tft.drawRect(0, 0, width + 2, height);
-
-  tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(3, 9, "Ball Lost");
-
-  tft.setCursor(3, 20);
-  tft.print("Bricks ");
-  tft.print(score_);
-  tft.setCursor(3, 29);
-  tft.print("Best ");
-  tft.print(bestScore_);
+void Breakout76Game::drawEnd(TFT_eSPI& tft) {
+  TDisplayUi::clear(tft);
+  TDisplayUi::header(tft, "Ball Lost", TFT_RED);
+  TDisplayUi::labelValue(tft, 48, "Bricks", String(score_), TFT_ORANGE);
+  String best = String(bestScore_);
   if (bestScore_ > 0) {
     char initials[4];
     PlayerProfile::unpackDottedInitials(bestInitials_, initials);
-    tft.print(" ");
-    tft.print(initials);
+    best += " ";
+    best += initials;
   }
-  tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(3, 38, "Tap retry Hold menu");
+  TDisplayUi::labelValue(tft, 78, "Best", best, TFT_YELLOW);
+  TDisplayUi::footer(tft, "B1 retry  Hold menu");
 }
 
 int Breakout76Game::clampInt(int value, int minValue, int maxValue) const {

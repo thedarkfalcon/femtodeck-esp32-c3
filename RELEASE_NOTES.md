@@ -1,5 +1,122 @@
 # Release Notes
 
+## v2.0 b64
+
+- Reworked T-Display Breakout '76 running rendering to use an 8-bit sprite framebuffer, reducing visible full-screen tearing during play.
+- Changed T-Display Breakout '76 paddle controls so B1 moves right only while held and B2 moves left only while held.
+
+## v2.0 b63
+
+- Adjusted T-Display Large text menus to show three clean rows instead of clipping a fourth row under the footer.
+
+## v2.0 b62
+
+- Added a T-Display-only `Text Size` option in Options, defaulting to Compact, with Large available for the core menu surfaces and Reading app.
+- Unified T-Display root, About, Options, Save Manager, and WiFi Setup list screens around a shared compact/large menu renderer.
+- Fixed T-Display Reading pagination so passage pages are wrapped dynamically by measured text width and never draw under the footer.
+- Reduced T-Display Save Manager tearing by redrawing only changed rows when selection moves without scrolling.
+
+## v2.0 b61
+
+- Reduced T-Display Femto Clock tick flicker further by using partial redraws for the digital, analog, and Unix clock faces instead of pushing a full-screen frame every second.
+
+## v2.0 b60
+
+- Applied sprite-backed rendering to the T-Display Femto Clock app so once-per-second clock face redraws no longer visibly tear or flash.
+
+## v2.0 b59
+
+- Applied sprite-backed rendering to the T-Display Options app to reduce visible tearing/black artifacts when switching pages and save-manager rows.
+- Added a `Launching WiFi AP` screen before T-Display WiFi Setup begins the slower scan/AP startup work, so Configure no longer appears frozen while the access point starts.
+
+## v2.0 b58
+
+- Applied the City Racer sprite-frame rendering pattern to the T-Display shell menu so Games, Apps, Settings, and About menu page changes are drawn offscreen and pushed as complete frames to reduce tearing.
+
+## v2.0 b57
+
+- Replaced the T-Display WiFi Setup placeholder with a real Settings flow that opens immediately, supports B1 next / B2 previous navigation, and uses B1 hold to open Configure Portal, Test Saved, and Delete Saved actions.
+- Added T-Display WiFi Setup portal hosting, saved-profile testing, delete confirmations, and status/message screens while keeping redraws dirty-state based to avoid TFT flicker.
+
+## v2.0 b56
+
+- Reworked T-Display City Racer running rendering to use a sprite-backed portrait frame instead of slowing down full-screen direct redraws, reducing tearing while restoring smoother motion.
+
+## v2.0 b55
+
+- Fixed Blackjack betting controls on both C3 and T-Display so tapping deals the selected bet and holding changes the bet.
+- Made natural Blackjack settle immediately after the initial deal, paying 3:2 unless the dealer also has a natural.
+- Reduced T-Display Blackjack flicker by skipping redraws when the table, bet, bankroll, and hand state have not changed.
+- Tuned T-Display Alien Raiders portrait controls, boss movement, and best-score layout.
+- Tuned T-Display City Racer portrait controls and running redraw cadence to reduce screen tearing.
+
+## v2.0 b54
+
+- Reduced T-Display flicker across About, Options, Save Manager, Reading, Communicator, Mouse Emulator, and the small utility apps by avoiding full-screen redraws when screens have not changed.
+- Made T-Display Countdown show a full-screen flashing `TIME UP` alert when the timer reaches zero.
+- Restored Random Number on both C3 and T-Display to the simpler include-zero plus fixed upper-bound range picker.
+- Made the T-Display Metronome beat much more visible with a large central screen pulse instead of a small circle behind the BPM text.
+- Polished T-Display Coin Flipper and Dice Roller so the coin reveals in the same spot it spins and tapping after a dice roll rerolls the same die.
+- Added Button 2 reverse-direction controls for T-Display Breakout '76, City Racer, and Alien Raiders.
+- Flipped the T-Display Cave Chopper sprite so the helicopter faces its direction of travel.
+
+## v2.0 b53
+
+- Improved Femto Clock so it can keep displaying time from the last successful sync when WiFi or NTP is unavailable.
+- Added a last-sync age label to Clock faces so stale time is visible instead of silently pretending to be freshly synced.
+- Added up to four saved Clock timezone offsets with next/edit/add/delete controls shared across C3 and T-Display builds.
+
+## v2.0 b52
+
+- Added Femto Clock to both C3 and T-Display builds with shared clock settings/formatting logic.
+- Clock startup now checks saved WiFi profiles, shows a clear no-saved-WiFi path pointing users to WiFi Settings, connects to the first working saved network, and syncs time using NTP.
+- Added Digital, Analog, Unix Time, and Options clock faces with persisted date, 24-hour, UTC offset, and timezone settings.
+
+## v2.0 b51
+
+- Reworked Pet Simulator care balance on both C3 and T-Display so stats decay much more slowly and health only drops after sustained poor care.
+- Added visible floor poop, low-health warning flashes, pet death/restart flow, and a short play animation where the pet chases a toy.
+- Added care tradeoffs: cleaning can restore health but lowers fun, play raises fun while using hunger/energy and can make the pet dirty.
+
+## v2.0 b50
+
+- Added a FemtoDeck T-Display boot splash that shows the board model and build string before opening the menu.
+- Made the T-Display boot splash skippable while consuming the skip button release so it does not immediately move the menu selection.
+
+## v2.0 b49
+
+- Fixed T-Display game resets caused by C3-only GPIO8 LED feedback touching unsafe classic ESP32 flash pins; T-Display LED calls are now no-ops for Femto Field, Fishing Flick, Mini Lander, and Need Speed.
+- Reduced T-Display flicker by throttling active app rendering and avoiding redundant redraws of static Start/End screens.
+- Fixed T-Display app-exit input leakage so the same Button 2 release no longer immediately moves backward through the menu.
+- Replaced the T-Display Communicator placeholder with a compact ESP-NOW send/inbox flow and a real splash screen.
+- Added a direct NimBLE service link anchor for the T-Display Mouse Emulator build so BLE HID and ESP-NOW can compile together reliably.
+
+## v2.0 b48
+
+- Continued the T-Display native layout pass across the remaining games, using full 240x135 color screens and deterministic clearing.
+- Reworked T-Display Fishing Flick, Knife Throw, Noon Shooter, Mini Lander, Need Speed, Blackjack, Breakout '76, Maze Runner, Maze Collector, Pipe Mania, Tiny Golf, Alien Raiders, and Femto Field.
+- Expanded T-Display gameplay geometry where required so sprites, lanes, cards, mazes, golf courses, pipes, and field-event screens use the larger display instead of staying C3-sized.
+- Polished the T-Display Mouse Emulator dashboard with clearer connection, enabled, countdown, and movement status rows.
+- Updated `TODO.txt` so all games and Mouse Emulator are marked as having a native T-Display pass; WiFi Setup and Communicator remain open for a real radio-app parity port.
+
+## v2.0 b47
+
+- Added a T-Display native port tracker to `TODO.txt` so future sessions can resume app-by-app polishing without rediscovering port status.
+- Added a small T-Display UI helper for cleared screens, headers, footers, clipped labels, selected rows, centered values, status pills, and bars.
+- Reworked T-Display Counter, Stopwatch, Countdown, Dice Roller, Coin Flipper, Random Number, and Metronome with full-screen color layouts and clearer Button 2 behavior where useful.
+- Reworked T-Display Cave Chopper, Tower Stacker, Simon, Reactor, and City Racer with larger 240x135 playfields, readable score/status displays, and color presentation.
+- Kept the C3 gameplay/code path intact while continuing the incremental T-Display native layout pass.
+
+## v2.0 b46
+
+- Fixed the T-Display build so TFT_eSPI uses the repo-local `tft_setup.h` without shadowing the library driver definitions.
+- Updated C3 and T-Display builds to use the `huge_app` partition in local docs/scripts and GitHub Actions.
+- Restored the T-Display root menu structure with Games, Apps, Settings, and About sections.
+- Fixed T-Display menu row clearing and scrolling so shorter labels do not inherit old text and selected rows stay visible.
+- Reworked T-Display About, Options, Reading, and Pet Simulator screens to clear between pages and use the larger color display more effectively.
+- Fixed T-Display port leftovers including primary-button wiring, Maze Runner constructor setup, Pet Simulator coordinates, and Mouse Emulator redraw state.
+- Kept the mature C3 firmware behavior intact while documenting remaining T-Display porting caveats.
+
 ## v2.0 b45
 
 - Major architectural overhaul to support multiple boards.

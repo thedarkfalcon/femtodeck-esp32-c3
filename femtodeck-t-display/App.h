@@ -53,6 +53,7 @@ class App {
         void begin(uint32_t nowMs, bool button1Down, bool button2Down);
         void tick(uint32_t nowMs, bool button1Down, bool button2Down);
         virtual void render(TFT_eSPI& tft);
+        virtual uint16_t runningRenderIntervalMs() const;
 
         bool shouldExitToMenu() const;
         void clearExitRequest();
@@ -70,6 +71,7 @@ class App {
         virtual void drawStart(TFT_eSPI& tft);
         virtual void drawEnd(TFT_eSPI& tft);
         virtual bool startsRunningImmediately() const;
+        virtual bool consumesButton2HoldInRunning() const;
 
     private:
         void startRunning();

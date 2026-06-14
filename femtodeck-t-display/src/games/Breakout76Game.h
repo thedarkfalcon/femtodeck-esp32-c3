@@ -13,6 +13,7 @@ class Breakout76Game : public App {
     void drawRunning(TFT_eSPI& tft) override;
     void drawStart(TFT_eSPI& tft) override;
     void drawEnd(TFT_eSPI& tft) override;
+    bool consumesButton2HoldInRunning() const override;
 
   private:
     static constexpr uint8_t ROWS = 5;

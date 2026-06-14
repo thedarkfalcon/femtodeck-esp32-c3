@@ -33,6 +33,20 @@ Repo shortcut: [git.new/esp32games](https://git.new/esp32games)
 - Button 2 tap: move previous / back
 - Button 2 hold: global exit to menu
 
+## Apps, Games, And Radio Features
+
+FemtoDeck includes arcade-style games, small utilities, settings tools, and radio utilities. Most apps share their core logic between the C3 and T-Display builds, with board-specific rendering for the tiny OLED or larger color TFT.
+
+Radio-capable utilities:
+
+- **WiFi Setup** stores multiple WiFi networks from a captive portal, then lets the device test or delete saved networks from the settings app.
+- **ESP Contacts** manages a shared ESP-NOW contact list. Use **Listen for Contacts** to save nearby FemtoDeck devices, **Send My Contact** to broadcast your saved initials, and **Manage Contacts** to remove saved peers.
+- **Communicator** sends predefined ESP-NOW messages. Messages use compact dictionary path IDs rather than full strings, then the receiver maps the path back to local text. After choosing a message, select **ALL** or a saved contact. Incoming messages are shown only when addressed to **ALL** or to this device's saved initials.
+
+The communicator packet has a small magic header (`FC`) and a protocol version so FemtoDeck devices can reject unrelated ESP-NOW traffic. It also carries the sender initials, recipient initials, and firmware build number. If a received message comes from a different FemtoDeck build, the app still shows the message but marks it with a version warning.
+
+Contact data is stored separately from game scores. The **Options / Save Manager** screen includes a **Contacts** entry for clearing the saved ESP-NOW contact list, and **Delete All** also clears it.
+
 ## Build
 
 Install the ESP32 core and required libraries:
@@ -44,13 +58,15 @@ arduino-cli lib install U8g2 "NimBLE-Arduino" "TFT_eSPI"
 
 ### Compile for ESP32-C3:
 ```sh
-arduino-cli compile --fqbn esp32:esp32:esp32c3 femtodeck-c3
+arduino-cli compile --fqbn esp32:esp32:esp32c3:PartitionScheme=huge_app femtodeck-c3
 ```
 
 ### Compile for T-Display:
 ```sh
-arduino-cli compile --fqbn esp32:esp32:esp32 femtodeck-t-display
+arduino-cli compile --fqbn esp32:esp32:esp32:PartitionScheme=huge_app femtodeck-t-display
 ```
+
+The T-Display target includes a repo-local `tft_setup.h` for TFT_eSPI, so you should not need to edit the installed TFT_eSPI library setup files.
 
 ## Browser Installer & Simulator
 

@@ -5,15 +5,16 @@
 #include <TFT_eSPI.h>
 
 #include "../../PlayerProfile.h"
+#include "../../TDisplayUi.h"
 
 namespace {
 constexpr uint8_t OPEN_UP = 1 << 0;
 constexpr uint8_t OPEN_RIGHT = 1 << 1;
 constexpr uint8_t OPEN_DOWN = 1 << 2;
 constexpr uint8_t OPEN_LEFT = 1 << 3;
-constexpr int GRID_X = 2;
-constexpr int GRID_Y = 8;
-constexpr int CELL = 6;
+constexpr int GRID_X = 10;
+constexpr int GRID_Y = 34;
+constexpr int CELL = 18;
 Preferences pipePrefs;
 }
 
@@ -33,6 +34,7 @@ void PipeManiaGame::onAppReset() {
 }
 
 void PipeManiaGame::updateRunning(uint32_t deltaMs, const ButtonInput& b1, const ButtonInput& b2) {
+  (void)b2;
   if (b1.released) {
     placedThisHold_ = false;
   }
@@ -70,100 +72,87 @@ void PipeManiaGame::updateRunning(uint32_t deltaMs, const ButtonInput& b1, const
   }
 }
 
-void void PipeManiaGame::drawRunning(TFT_eSPI& tft) { tft.fillScreen(TFT_BLACK); { tft.fillScreen(TFT_BLACK);
-  tft.drawRect(, 0, width, height);
-
-  tft.setCursor(2, 6);
-  tft.print("L");
-  tft.print(level_);
-  tft.print(" ");
-  tft.print(flowedCount_);
-  tft.print("/");
-  tft.print(targetCount_);
+void PipeManiaGame::drawRunning(TFT_eSPI& tft) {
+  TDisplayUi::clear(tft);
+  const String stat = "L" + String(level_) + " " + String(flowedCount_) + "/" + String(targetCount_);
+  TDisplayUi::header(tft, "Pipe Mania", TFT_GREEN, stat.c_str());
 
   for (uint8_t i = 0; i < CELL_COUNT; i++) {
     const uint8_t c = i % COLS;
     const uint8_t r = i / COLS;
     const int x = GRID_X + c * CELL;
     const int y = GRID_Y + r * CELL;
-    tft.drawRect(x, y, CELL, CELL);
+    tft.drawRect(x, y, CELL, CELL, TFT_DARKGREY);
     drawPipe(tft, x, y, grid_[i], filled_[i]);
     if (i == cursor_ && pipeState_ == PipeState::Build) {
       if (((millis() / 180) % 2) == 0) {
-        tft.drawRect(x - 2, y - 2, CELL + 4, CELL + 4);
+        tft.drawRect(x - 2, y - 2, CELL + 4, CELL + 4, TFT_YELLOW);
+        tft.drawRect(x - 3, y - 3, CELL + 6, CELL + 6, TFT_ORANGE);
       }
       drawPipe(tft, x, y, currentPiece_, false);
     }
   }
 
-  tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(48, 13, "Next");
-  drawPipe(tft, 54, 17, currentPiece_, false);
+  tft.setTextSize(2);
+  tft.setTextColor(TFT_LIGHTGREY, TFT_BLACK);
+  tft.drawString("Next", 158, 38);
+  tft.drawRect(168, 62, CELL + 8, CELL + 8, TFT_DARKGREY);
+  drawPipe(tft, 172, 66, currentPiece_, false);
   if (pipeState_ == PipeState::Build) {
-    tft.setCursor(43, 36);
     if (cursor_ >= CELL_COUNT) {
-      tft.print("Blocked");
+      TDisplayUi::centered(tft, "Blocked", 101, 2, TFT_RED);
     } else {
-      tft.print("T");
-      tft.print((buildDelayMs() - min(buildTimerMs_, buildDelayMs())) / 1000);
+      TDisplayUi::largeValue(tft, String((buildDelayMs() - min(buildTimerMs_, buildDelayMs())) / 1000), 91, TFT_YELLOW);
     }
   } else if (pipeState_ == PipeState::Complete) {
-    tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(49, 36, "Clear");
+    TDisplayUi::centered(tft, "Clear", 96, 2, TFT_GREEN);
   } else {
-    tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(50, 36, "Goo");
+    TDisplayUi::centered(tft, "Goo", 96, 2, TFT_GREEN);
   }
+  TDisplayUi::footer(tft, pipeState_ == PipeState::Build ? "B1 piece  Hold place" : "Flowing...");
 }
 
-void PipeManiaGame::drawStart(TFT_eSPI& tft) { tft.fillScreen(TFT_BLACK);
+void PipeManiaGame::drawStart(TFT_eSPI& tft) {
+  TDisplayUi::clear(tft);
   loadBestScore();
-  tft.drawRect(0, 0, width + 2, height);
   if (showStartPromptPage()) {
-
-    tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(20, 16, "Press");
-    tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(13, 29, "to Start");
+    TDisplayUi::header(tft, appTitle(), TFT_GREEN);
+    TDisplayUi::centered(tft, "Press", 50, 3, TFT_WHITE);
+    TDisplayUi::centered(tft, "to Start", 78, 2, TFT_LIGHTGREY);
+    TDisplayUi::footer(tft, "B1 start");
   } else if (showStartScorePage()) {
     char initials[4];
     PlayerProfile::unpackDottedInitials(bestInitials_, initials);
 
-    tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(3, 9, "Top Score");
-
-    tft.setCursor(3, 24);
-    if (bestScore_ == 0) {
-      tft.print("--");
-    } else {
-      tft.print(initials);
-      tft.print(" ");
-      tft.print(bestScore_);
-    }
+    TDisplayUi::header(tft, "Top Score", TFT_YELLOW);
+    TDisplayUi::largeValue(tft, bestScore_ == 0 ? String("--") : String(bestScore_), 54, TFT_YELLOW);
+    TDisplayUi::centered(tft, bestScore_ == 0 ? String("") : String(initials), 96, 2, TFT_LIGHTGREY);
+    TDisplayUi::footer(tft, "Best pipe score");
   } else {
-
-    tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(3, 9, appTitle());
-    drawPipe(tft, 8, 16, Horizontal, true);
-    drawPipe(tft, 14, 16, TurnRD, true);
-    drawPipe(tft, 14, 22, Vertical, true);
-
-    tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(30, 20, "Tap piece");
-    tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(30, 29, "Hold place");
+    TDisplayUi::header(tft, appTitle(), TFT_GREEN);
+    drawPipe(tft, 58, 56, Horizontal, true);
+    drawPipe(tft, 76, 56, TurnRD, true);
+    drawPipe(tft, 76, 74, Vertical, true);
+    drawPipe(tft, 76, 92, TurnUR, true);
+    drawPipe(tft, 94, 92, Horizontal, true);
+    TDisplayUi::centered(tft, "Outrun the goo", 88, 2, TFT_LIGHTGREY);
+    TDisplayUi::footer(tft, "B1 piece  Hold place");
   }
 }
 
-void PipeManiaGame::drawEnd(TFT_eSPI& tft) { tft.fillScreen(TFT_BLACK);
-  tft.drawRect(0, 0, width + 2, height);
-
-  tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(3, 9, won_ ? "Pipe Master" : "Pipe End");
-
-  tft.setCursor(3, 20);
-  tft.print("Score ");
-  tft.print(score_);
-  tft.setCursor(3, 29);
-  tft.print("Best ");
-  tft.print(bestScore_);
+void PipeManiaGame::drawEnd(TFT_eSPI& tft) {
+  TDisplayUi::clear(tft);
+  TDisplayUi::header(tft, won_ ? "Pipe Master" : "Pipe End", won_ ? TFT_GREEN : TFT_RED);
+  TDisplayUi::labelValue(tft, 48, "Score", String(score_), TFT_GREEN);
+  String best = String(bestScore_);
   if (bestScore_ > 0) {
     char initials[4];
     PlayerProfile::unpackDottedInitials(bestInitials_, initials);
-    tft.print(" ");
-    tft.print(initials);
+    best += " ";
+    best += initials;
   }
-  tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(3, 38, "Tap retry Hold menu");
+  TDisplayUi::labelValue(tft, 78, "Best", best, TFT_YELLOW);
+  TDisplayUi::footer(tft, "B1 retry  Hold menu");
 }
 
 void PipeManiaGame::loadBestScore() {
@@ -352,29 +341,29 @@ bool PipeManiaGame::stepCell(uint8_t cell, Direction dir, uint8_t& nextCell) con
 }
 
 void PipeManiaGame::drawPipe(TFT_eSPI& tft, int x, int y, PipeType pipe, bool filled) {
-  const int cx = x + 3;
-  const int cy = y + 3;
+  const int cx = x + CELL / 2;
+  const int cy = y + CELL / 2;
+  const int r = max(2, CELL / 6);
   if (pipe == Empty) {
     return;
   }
   if (filled) {
-    tft.fillRect(x + 1, y + 1, CELL - 2, CELL - 2);
-
+    tft.fillRect(x + 2, y + 2, CELL - 4, CELL - 4, TFT_DARKGREEN);
   }
+  const uint16_t pipeColor = filled ? TFT_GREEN : TFT_LIGHTGREY;
+  const uint16_t coreColor = filled ? TFT_YELLOW : TFT_DARKGREY;
   if (hasOpening(pipe, Up)) {
-    tft.drawLine(cx, cy, cx, y);
+    tft.fillRect(cx - r, y, r * 2 + 1, CELL / 2 + 1, pipeColor);
   }
   if (hasOpening(pipe, Right)) {
-    tft.drawLine(cx, cy, x + CELL - 1, cy);
+    tft.fillRect(cx, cy - r, CELL / 2, r * 2 + 1, pipeColor);
   }
   if (hasOpening(pipe, Down)) {
-    tft.drawLine(cx, cy, cx, y + CELL - 1);
+    tft.fillRect(cx - r, cy, r * 2 + 1, CELL / 2, pipeColor);
   }
   if (hasOpening(pipe, Left)) {
-    tft.drawLine(cx, cy, x, cy);
+    tft.fillRect(x, cy - r, CELL / 2 + 1, r * 2 + 1, pipeColor);
   }
-  if (filled) {
-    tft.fillCircle(cx, cy, 1);
-
-  }
+  tft.fillCircle(cx, cy, r + 1, coreColor);
+  if (filled) tft.fillCircle(cx, cy, r - 1, TFT_GREEN);
 }

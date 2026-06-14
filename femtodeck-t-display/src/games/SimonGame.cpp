@@ -5,6 +5,7 @@
 #include <TFT_eSPI.h>
 
 #include "../../PlayerProfile.h"
+#include "../../TDisplayUi.h"
 
 namespace {
 Preferences simonPrefs;
@@ -44,6 +45,7 @@ void SimonGame::addStep() {
 }
 
 void SimonGame::updateRunning(uint32_t deltaMs, const ButtonInput& b1, const ButtonInput& b2) {
+  (void)b2;
   timerMs_ += deltaMs;
   if (mode_ == Mode::Show) {
     const uint16_t stepMs = 650;
@@ -104,89 +106,71 @@ void SimonGame::checkStep(bool longTone) {
   }
 }
 
-void void SimonGame::drawRunning(TFT_eSPI& tft) { tft.fillScreen(TFT_BLACK); { tft.fillScreen(TFT_BLACK);
-  tft.drawRect(, 0, width, height);
-
-  tft.setCursor(3, 7);
-  tft.print("L");
-  tft.print(length_);
+void SimonGame::drawRunning(TFT_eSPI& tft) {
+  TDisplayUi::clear(tft);
+  TDisplayUi::header(tft, "Simon", TFT_MAGENTA, (String("L") + String(length_)).c_str());
 
   if (mode_ == Mode::Show) {
     const bool longTone = sequence_[showIndex_];
+    const uint16_t color = longTone ? TFT_ORANGE : TFT_CYAN;
     if ((timerMs_ % 650) < (longTone ? 420 : 180)) {
       const char* cue = longTone ? "HOLD" : "TAP";
-
-      tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(((width - tft.textWidth(cue)) / 2), 25, cue);
+      tft.fillRoundRect(42, 42, 156, 48, 8, color);
+      tft.setTextSize(4);
+      tft.setTextColor(TFT_BLACK, color);
+      tft.drawString(cue, (width - tft.textWidth(cue)) / 2, 52);
+    } else {
+      tft.drawRoundRect(42, 42, 156, 48, 8, TFT_DARKGREY);
     }
-
-    tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(23, 38, "Watch");
+    TDisplayUi::footer(tft, "Watch the sequence");
     return;
   }
 
   if (mode_ == Mode::Good) {
-
-    tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(20, 25, "GOOD");
+    TDisplayUi::centered(tft, "GOOD", 52, 4, TFT_GREEN);
+    TDisplayUi::footer(tft, "Next round...");
     return;
   }
 
-
-  tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(18, 19, "Repeat");
-
-  tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(5, 30, "Tap=short");
-  tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(38, 30, "Hold");
-  tft.setCursor(25, 38);
-  tft.print(inputIndex_);
-  tft.print("/");
-  tft.print(length_);
+  TDisplayUi::centered(tft, "REPEAT", 37, 3, TFT_WHITE);
+  TDisplayUi::row(tft, 75, "B1 tap = short", false, TFT_CYAN);
+  TDisplayUi::footer(tft, (String("Step ") + String(inputIndex_ + 1) + "/" + String(length_) + " / hold = long").c_str());
 }
 
 void SimonGame::drawStart(TFT_eSPI& tft) { tft.fillScreen(TFT_BLACK);
   loadBest();
-  tft.drawRect(0, 0, width + 2, height);
+  TDisplayUi::clear(tft);
   if (showStartPromptPage()) {
-
-    tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(20, 16, "Press");
-    tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(13, 29, "to Start");
+    TDisplayUi::header(tft, "Simon", TFT_MAGENTA);
+    TDisplayUi::centered(tft, "Press to Start", 56, 2, TFT_WHITE);
+    TDisplayUi::footer(tft, "Copy TAP and HOLD cues");
   } else if (showStartScorePage()) {
     char initials[4];
     PlayerProfile::unpackDottedInitials(bestInitials_, initials);
-
-    tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(3, 10, "Best Memory");
-
-    tft.setCursor(3, 24);
-    if (bestLevel_ == 0) tft.print("--");
-    else {
-      tft.print(initials);
-      tft.print(" L");
-      tft.print(bestLevel_);
-    }
+    TDisplayUi::header(tft, "Best Memory", TFT_MAGENTA);
+    String score = bestLevel_ == 0 ? "--" : String(initials) + " L" + String(bestLevel_);
+    TDisplayUi::largeValue(tft, score, 54, TFT_MAGENTA);
+    TDisplayUi::footer(tft, "Longest sequence");
   } else {
-    tft.drawRect(42, 12, 12, 12);
-    tft.drawRect(56, 12, 12, 12);
-    tft.drawRect(42, 26, 12, 12);
-    tft.drawRect(56, 26, 12, 12);
-    tft.fillRect(56, 12, 12, 12);
-
-    tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(3, 10, "Simon");
-
-    tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(3, 22, "Copy flashes");
-    tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(3, 31, "Tap=short");
-    tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(3, 38, "Hold=long");
+    TDisplayUi::header(tft, "Simon", TFT_MAGENTA);
+    tft.fillRoundRect(52, 45, 58, 34, 6, TFT_CYAN);
+    tft.fillRoundRect(130, 45, 58, 34, 6, TFT_ORANGE);
+    tft.setTextSize(2);
+    tft.setTextColor(TFT_BLACK, TFT_CYAN);
+    tft.drawString("TAP", 63, 54);
+    tft.setTextColor(TFT_BLACK, TFT_ORANGE);
+    tft.drawString("HOLD", 136, 54);
+    TDisplayUi::centered(tft, "Copy the flashes", 94, 1, TFT_LIGHTGREY);
+    TDisplayUi::footer(tft, "Short tap or long hold");
   }
 }
 
 void SimonGame::drawEnd(TFT_eSPI& tft) { tft.fillScreen(TFT_BLACK);
-  tft.drawRect(0, 0, width + 2, height);
-
-  tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(3, 9, "Wrong");
-
-  tft.setCursor(3, 20);
-  tft.print("Needed ");
-  tft.print(expectedLong_ ? "HOLD" : "TAP");
-  tft.setCursor(3, 29);
-  tft.print("Best ");
-  tft.print(bestLevel_);
-  tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(3, 38, "Tap retry Hold menu");
+  TDisplayUi::clear(tft);
+  TDisplayUi::header(tft, "Wrong", TFT_RED);
+  TDisplayUi::labelValue(tft, 49, "Needed", expectedLong_ ? "HOLD" : "TAP", expectedLong_ ? TFT_ORANGE : TFT_CYAN);
+  TDisplayUi::labelValue(tft, 78, "Best", String(bestLevel_), TFT_GREEN);
+  TDisplayUi::footer(tft, "B1 retry / B1 hold menu");
 }
 
 void SimonGame::loadBest() {

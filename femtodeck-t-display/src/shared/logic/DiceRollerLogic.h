@@ -34,7 +34,10 @@ public:
                     result_ = random(1, DICE[selectedIdx_] + 1);
                 }
             } else {
-                if (click || longPress) {
+                if (click) {
+                    startRolling();
+                }
+                if (longPress) {
                     mode_ = Mode::Select;
                 }
             }

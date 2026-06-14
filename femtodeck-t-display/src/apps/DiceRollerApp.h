@@ -17,4 +17,9 @@ class DiceRollerApp : public App {
 
   private:
     DiceRollerLogic logic_;
+    DiceRollerLogic::Mode renderedMode_ = DiceRollerLogic::Mode::Select;
+    uint8_t renderedDie_ = 0;
+    uint8_t renderedResult_ = 0;
+    uint16_t renderedRollFrame_ = UINT16_MAX;
+    bool dirty_ = true;
 };

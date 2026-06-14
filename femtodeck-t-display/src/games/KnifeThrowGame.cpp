@@ -5,10 +5,14 @@
 #include <TFT_eSPI.h>
 
 #include "../../PlayerProfile.h"
+#include "../../TDisplayUi.h"
 
 namespace {
 Preferences knifePrefs;
 constexpr float TWO_PI_F = 6.2831853f;
+constexpr float BOARD_SCALE = 2.35f;
+constexpr int BOARD_CX = 150;
+constexpr int BOARD_CY = 73;
 }
 
 KnifeThrowGame::KnifeThrowGame(uint32_t width, uint32_t height)
@@ -33,6 +37,7 @@ void KnifeThrowGame::onAppReset() {
 }
 
 void KnifeThrowGame::updateRunning(uint32_t deltaMs, const ButtonInput& b1, const ButtonInput& b2) {
+  (void)b2;
   const float dt = static_cast<float>(deltaMs) * 0.001f;
   boardAngle_ += boardSpeed_ * dt;
   if (boardAngle_ >= TWO_PI_F) {
@@ -122,112 +127,107 @@ float KnifeThrowGame::rotateY(float lx, float ly) const {
 }
 
 void KnifeThrowGame::drawPerson(TFT_eSPI& tft, int cx, int cy) const {
-  const int hx = cx + static_cast<int>(rotateX(0.0f, -9.0f));
-  const int hy = cy + static_cast<int>(rotateY(0.0f, -9.0f));
-  const int sx = cx + static_cast<int>(rotateX(0.0f, -6.0f));
-  const int sy = cy + static_cast<int>(rotateY(0.0f, -6.0f));
-  const int px = cx + static_cast<int>(rotateX(0.0f, 7.0f));
-  const int py = cy + static_cast<int>(rotateY(0.0f, 7.0f));
-  const int la = cx + static_cast<int>(rotateX(-5.0f, -1.0f));
-  const int lay = cy + static_cast<int>(rotateY(-5.0f, -1.0f));
-  const int ra = cx + static_cast<int>(rotateX(5.0f, -1.0f));
-  const int ray = cy + static_cast<int>(rotateY(5.0f, -1.0f));
-  const int ll = cx + static_cast<int>(rotateX(-4.0f, 10.0f));
-  const int lly = cy + static_cast<int>(rotateY(-4.0f, 10.0f));
-  const int rl = cx + static_cast<int>(rotateX(4.0f, 10.0f));
-  const int rly = cy + static_cast<int>(rotateY(4.0f, 10.0f));
-  tft.drawCircle(hx, hy, 2);
-  tft.drawLine(sx, sy, px, py);
-  tft.drawLine(sx, sy, la, lay);
-  tft.drawLine(sx, sy, ra, ray);
-  tft.drawLine(px, py, ll, lly);
-  tft.drawLine(px, py, rl, rly);
+  const int hx = cx + static_cast<int>(rotateX(0.0f, -9.0f) * BOARD_SCALE);
+  const int hy = cy + static_cast<int>(rotateY(0.0f, -9.0f) * BOARD_SCALE);
+  const int sx = cx + static_cast<int>(rotateX(0.0f, -6.0f) * BOARD_SCALE);
+  const int sy = cy + static_cast<int>(rotateY(0.0f, -6.0f) * BOARD_SCALE);
+  const int px = cx + static_cast<int>(rotateX(0.0f, 7.0f) * BOARD_SCALE);
+  const int py = cy + static_cast<int>(rotateY(0.0f, 7.0f) * BOARD_SCALE);
+  const int la = cx + static_cast<int>(rotateX(-5.0f, -1.0f) * BOARD_SCALE);
+  const int lay = cy + static_cast<int>(rotateY(-5.0f, -1.0f) * BOARD_SCALE);
+  const int ra = cx + static_cast<int>(rotateX(5.0f, -1.0f) * BOARD_SCALE);
+  const int ray = cy + static_cast<int>(rotateY(5.0f, -1.0f) * BOARD_SCALE);
+  const int ll = cx + static_cast<int>(rotateX(-4.0f, 10.0f) * BOARD_SCALE);
+  const int lly = cy + static_cast<int>(rotateY(-4.0f, 10.0f) * BOARD_SCALE);
+  const int rl = cx + static_cast<int>(rotateX(4.0f, 10.0f) * BOARD_SCALE);
+  const int rly = cy + static_cast<int>(rotateY(4.0f, 10.0f) * BOARD_SCALE);
+  tft.drawCircle(hx, hy, 5, TFT_WHITE);
+  tft.drawLine(sx, sy, px, py, TFT_WHITE);
+  tft.drawLine(sx, sy, la, lay, TFT_WHITE);
+  tft.drawLine(sx, sy, ra, ray, TFT_WHITE);
+  tft.drawLine(px, py, ll, lly, TFT_WHITE);
+  tft.drawLine(px, py, rl, rly, TFT_WHITE);
 }
 
 void KnifeThrowGame::drawReticle(TFT_eSPI& tft, int cx, int cy) const {
-  const int x = cx + static_cast<int>(cosf(reticleAngle_) * reticleRadius_);
-  const int y = cy + static_cast<int>(sinf(reticleAngle_) * reticleRadius_);
-  tft.drawLine(x - 3, y, x + 3, y);
-  tft.drawLine(x, y - 3, x, y + 3);
+  const int x = cx + static_cast<int>(cosf(reticleAngle_) * reticleRadius_ * BOARD_SCALE);
+  const int y = cy + static_cast<int>(sinf(reticleAngle_) * reticleRadius_ * BOARD_SCALE);
+  tft.drawCircle(x, y, 5, TFT_YELLOW);
+  tft.drawLine(x - 8, y, x + 8, y, TFT_YELLOW);
+  tft.drawLine(x, y - 8, x, y + 8, TFT_YELLOW);
 }
 
 void KnifeThrowGame::drawBoard(TFT_eSPI& tft, int cx, int cy) {
-  tft.drawCircle(cx, cy, 14);
-  tft.drawCircle(cx, cy, 10);
-  tft.drawLine(cx + static_cast<int>(cosf(boardAngle_) * 14), cy + static_cast<int>(sinf(boardAngle_) * 14),
-                cx - static_cast<int>(cosf(boardAngle_) * 14), cy - static_cast<int>(sinf(boardAngle_) * 14));
+  tft.fillCircle(cx, cy, static_cast<int>(15 * BOARD_SCALE), TFT_MAROON);
+  tft.drawCircle(cx, cy, static_cast<int>(15 * BOARD_SCALE), TFT_ORANGE);
+  tft.drawCircle(cx, cy, static_cast<int>(10 * BOARD_SCALE), TFT_YELLOW);
+  tft.drawLine(cx + static_cast<int>(cosf(boardAngle_) * 15 * BOARD_SCALE), cy + static_cast<int>(sinf(boardAngle_) * 15 * BOARD_SCALE),
+               cx - static_cast<int>(cosf(boardAngle_) * 15 * BOARD_SCALE), cy - static_cast<int>(sinf(boardAngle_) * 15 * BOARD_SCALE), TFT_YELLOW);
   drawPerson(tft, cx, cy);
   for (uint8_t i = 0; i < knifeCount_; i++) {
-    const int x = cx + static_cast<int>(rotateX(knives_[i].lx, knives_[i].ly));
-    const int y = cy + static_cast<int>(rotateY(knives_[i].lx, knives_[i].ly));
-    tft.drawLine(x - 2, y, x + 2, y);
-    tft.drawLine(x, y - 2, x, y + 2);
+    const int x = cx + static_cast<int>(rotateX(knives_[i].lx, knives_[i].ly) * BOARD_SCALE);
+    const int y = cy + static_cast<int>(rotateY(knives_[i].lx, knives_[i].ly) * BOARD_SCALE);
+    tft.drawLine(x - 5, y, x + 5, y, TFT_LIGHTGREY);
+    tft.drawLine(x, y - 5, x, y + 5, TFT_WHITE);
   }
   if (!throwActive_) {
     drawReticle(tft, cx, cy);
   } else {
     const float progress = static_cast<float>(throwMs_) / 850.0f;
-    const int sx = 2;
-    const int sy = 35;
-    const int tx = cx + static_cast<int>(thrownScreenX_);
-    const int ty = cy + static_cast<int>(thrownScreenY_);
+    const int sx = 20;
+    const int sy = 112;
+    const int tx = cx + static_cast<int>(thrownScreenX_ * BOARD_SCALE);
+    const int ty = cy + static_cast<int>(thrownScreenY_ * BOARD_SCALE);
     const int x = sx + static_cast<int>((tx - sx) * progress);
     const int y = sy + static_cast<int>((ty - sy) * progress);
-    tft.drawLine(x - 4, y + 2, x, y);
+    tft.drawLine(x - 10, y + 5, x, y, TFT_WHITE);
+    tft.drawLine(x - 5, y + 5, x - 10, y + 5, TFT_LIGHTGREY);
   }
 }
 
-void void KnifeThrowGame::drawRunning(TFT_eSPI& tft) { tft.fillScreen(TFT_BLACK); { tft.fillScreen(TFT_BLACK);
-  tft.drawRect(, 0, width, height);
-  drawBoard(tft, 42, 20);
-
-  tft.setCursor(2, 8);
-  tft.print(score_);
-  tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(2, 38, throwActive_ ? "Knife..." : "Tap");
+void KnifeThrowGame::drawRunning(TFT_eSPI& tft) {
+  TDisplayUi::clear(tft);
+  TDisplayUi::header(tft, "Knife Throw", TFT_ORANGE, (String("S") + String(score_)).c_str());
+  drawBoard(tft, BOARD_CX, BOARD_CY);
+  TDisplayUi::footer(tft, throwActive_ ? "Knife in flight..." : "B1 throw");
 }
 
 void KnifeThrowGame::drawStart(TFT_eSPI& tft) { tft.fillScreen(TFT_BLACK);
   loadBest();
-  tft.drawRect(0, 0, width + 2, height);
+  TDisplayUi::clear(tft);
   if (showStartPromptPage()) {
-
-    tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(20, 16, "Press");
-    tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(13, 29, "to Start");
+    TDisplayUi::header(tft, "Knife Throw", TFT_ORANGE);
+    TDisplayUi::centered(tft, "Press to Start", 56, 2, TFT_WHITE);
+    TDisplayUi::footer(tft, "Do not hit the person");
   } else if (showStartScorePage()) {
     char initials[4];
     PlayerProfile::unpackDottedInitials(bestInitials_, initials);
-
-    tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(3, 10, "Top Score");
-
-    tft.setCursor(3, 24);
-    if (bestScore_ == 0) tft.print("--");
-    else {
-      tft.print(initials);
-      tft.print(" ");
-      tft.print(bestScore_);
-    }
+    TDisplayUi::header(tft, "Top Score", TFT_ORANGE);
+    String score = bestScore_ == 0 ? "--" : String(initials) + " " + String(bestScore_);
+    TDisplayUi::largeValue(tft, score, 54, TFT_ORANGE);
+    TDisplayUi::footer(tft, "Best clean throws");
   } else {
-    boardAngle_ += 0.0f;
-    drawBoard(tft, 52, 22);
-    tft.drawLine(9, 31, 30, 18);
-    tft.drawLine(30, 18, 35, 18);
-
-    tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(3, 10, appTitle());
+    TDisplayUi::header(tft, "Knife Throw", TFT_ORANGE);
+    drawBoard(tft, BOARD_CX, BOARD_CY);
+    tft.drawLine(22, 112, 72, 88, TFT_WHITE);
+    tft.drawLine(72, 88, 84, 90, TFT_LIGHTGREY);
+    TDisplayUi::footer(tft, "Time the spinning board");
   }
 }
 
 void KnifeThrowGame::drawEnd(TFT_eSPI& tft) { tft.fillScreen(TFT_BLACK);
-  tft.drawRect(0, 0, width + 2, height);
-
-  tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(3, 9, hitPerson_ ? "Hit Person" : "Hit Knife");
-
-  tft.setCursor(3, 21);
-  tft.print("Score ");
-  tft.print(score_);
-  tft.setCursor(3, 30);
-  tft.print("Best ");
-  tft.print(bestScore_);
-  tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(3, 38, "Tap retry Hold menu");
+  TDisplayUi::clear(tft);
+  TDisplayUi::header(tft, hitPerson_ ? "Hit Person" : "Hit Knife", TFT_RED);
+  TDisplayUi::labelValue(tft, 49, "Score", String(score_), TFT_YELLOW);
+  String best = String(bestScore_);
+  if (bestScore_ > 0) {
+    char initials[4];
+    PlayerProfile::unpackDottedInitials(bestInitials_, initials);
+    best += " ";
+    best += initials;
+  }
+  TDisplayUi::labelValue(tft, 78, "Best", best, TFT_GREEN);
+  TDisplayUi::footer(tft, "B1 retry / B1 hold menu");
 }
 
 void KnifeThrowGame::loadBest() {

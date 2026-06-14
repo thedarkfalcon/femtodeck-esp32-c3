@@ -1,11 +1,11 @@
 param(
-  [string]$Fqbn = "esp32:esp32:esp32c3",
+  [string]$Fqbn = "esp32:esp32:esp32c3:PartitionScheme=huge_app",
   [string]$Sketch = "femtodeck-c3"
 )
 
 $ErrorActionPreference = "Stop"
 
-$versionPath = Join-Path $PSScriptRoot "femtodeck-c3\Version.h"
+$versionPath = Join-Path $PSScriptRoot "$Sketch\Version.h"
 $content = Get-Content -Raw -LiteralPath $versionPath
 
 $major = [regex]::Match($content, "VERSION_MAJOR = (\d+)").Groups[1].Value

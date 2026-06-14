@@ -4,6 +4,7 @@
 #include <TFT_eSPI.h>
 
 #include "../../PlayerProfile.h"
+#include "../../TDisplayUi.h"
 
 namespace {
 Preferences cavePrefs;
@@ -18,9 +19,9 @@ bool CaveChopperGame::hasCustomOverlay() const {
 
 void CaveChopperGame::onAppReset() {
   loadBestScore();
-  y_ = 18.0f;
+  y_ = static_cast<float>(height / 2);
   vy_ = 0.0f;
-  speed_ = 13.0f;
+  speed_ = 42.0f;
   scoreMs_ = 0;
   score_ = 0;
   rotorMs_ = 0;
@@ -32,12 +33,13 @@ void CaveChopperGame::onAppReset() {
 }
 
 void CaveChopperGame::updateRunning(uint32_t deltaMs, const ButtonInput& b1, const ButtonInput& b2) {
+  (void)b2;
   const float dt = static_cast<float>(deltaMs) * 0.001f;
-  if (b1.down) vy_ -= 72.0f * dt;
-  else vy_ += 36.0f * dt;
-  if (b1.pressed) vy_ -= 5.0f;
-  if (vy_ < -20.0f) vy_ = -20.0f;
-  if (vy_ > 19.0f) vy_ = 19.0f;
+  if (b1.down) vy_ -= 170.0f * dt;
+  else vy_ += 88.0f * dt;
+  if (b1.pressed) vy_ -= 10.0f;
+  if (vy_ < -58.0f) vy_ = -58.0f;
+  if (vy_ > 56.0f) vy_ = 56.0f;
   y_ += vy_ * dt;
 
   float rightMost = -1000.0f;
@@ -54,7 +56,7 @@ void CaveChopperGame::updateRunning(uint32_t deltaMs, const ButtonInput& b1, con
     }
   }
 
-  if (y_ < 1.0f || y_ > height - 6) {
+  if (y_ < 20.0f || y_ > height - 10) {
     endApp();
     return;
   }
@@ -75,8 +77,8 @@ void CaveChopperGame::updateRunning(uint32_t deltaMs, const ButtonInput& b1, con
     bestScore_ = score_;
     saveBestScore();
   }
-  speed_ += 0.45f * dt;
-  if (speed_ > 32.0f) speed_ = 32.0f;
+  speed_ += 1.6f * dt;
+  if (speed_ > 88.0f) speed_ = 88.0f;
   rotorMs_ += deltaMs;
   if (rotorMs_ > 90) {
     rotorMs_ = 0;
@@ -84,85 +86,69 @@ void CaveChopperGame::updateRunning(uint32_t deltaMs, const ButtonInput& b1, con
   }
 }
 
-void void CaveChopperGame::drawRunning(TFT_eSPI& tft) { tft.fillScreen(TFT_BLACK); { tft.fillScreen(TFT_BLACK);
-  tft.drawRect(, 0, width, height);
+void CaveChopperGame::drawRunning(TFT_eSPI& tft) {
+  TDisplayUi::clear(tft);
+  TDisplayUi::header(tft, "Cave Chopper", TFT_GREEN, (String(score_) + "s").c_str());
+  tft.drawRect(0, TDisplayUi::HEADER_H, width, height - TDisplayUi::HEADER_H, TFT_DARKGREY);
   for (uint8_t i = 0; i < SEGMENTS; i++) {
     if (!segments_[i].active) continue;
     const int x = static_cast<int>(segments_[i].x);
     const int topH = segments_[i].gapTop;
     const int bottomY = segments_[i].gapTop + GAP_H;
-    if (topH > 0) tft.fillRect(x, 1, SEG_W, topH);
-    if (bottomY < static_cast<int>(height)) tft.fillRect(x, bottomY, SEG_W, height - bottomY - 1);
+    if (topH > TDisplayUi::HEADER_H) tft.fillRect(x, TDisplayUi::HEADER_H, SEG_W, topH - TDisplayUi::HEADER_H, TFT_DARKGREEN);
+    if (bottomY < static_cast<int>(height)) tft.fillRect(x, bottomY, SEG_W, height - bottomY - 1, TFT_GREEN);
   }
-  drawChopper(tft, 12, static_cast<int>(y_), rotorOn_);
-
-  tft.fillRect(1, 1, 18, 7);
-
-
-  tft.setCursor(2, 7);
-  tft.print(score_);
+  drawChopper(tft, 34, static_cast<int>(y_), rotorOn_);
 }
 
 void CaveChopperGame::drawChopper(TFT_eSPI& tft, int x, int y, bool rotor) const {
-  if (rotor) tft.drawLine(x + 1, y - 2, x + 10, y - 2);
-  else tft.drawLine(x + 5, y - 3, x + 7, y - 3);
-  tft.drawLine(x + 6, y - 2, x + 6, y);
-  tft.fillRect(x, y + 1, 4, 3);
-  tft.fillRect(x + 6, y, 6, 4);
-  tft.drawPixel(x + 12, y + 2);
-  tft.drawLine(x + 2, y + 4, x + 10, y + 4);
+  if (rotor) tft.drawFastHLine(x + 7, y - 7, 28, TFT_CYAN);
+  else tft.drawFastHLine(x + 18, y - 9, 8, TFT_CYAN);
+  tft.drawFastVLine(x + 22, y - 6, 5, TFT_CYAN);
+  tft.drawLine(x + 1, y - 3, x + 9, y + 1, TFT_YELLOW);
+  tft.drawLine(x + 1, y + 8, x + 9, y + 4, TFT_YELLOW);
+  tft.drawFastVLine(x, y - 5, 11, TFT_YELLOW);
+  tft.fillRoundRect(x + 9, y, 14, 7, 2, TFT_YELLOW);
+  tft.fillRoundRect(x + 24, y - 2, 15, 9, 2, TFT_ORANGE);
+  tft.drawFastHLine(x + 10, y + 9, 23, TFT_LIGHTGREY);
 }
 
 void CaveChopperGame::drawStart(TFT_eSPI& tft) { tft.fillScreen(TFT_BLACK);
   loadBestScore();
-  tft.drawRect(0, 0, width + 2, height);
+  TDisplayUi::clear(tft);
   if (showStartPromptPage()) {
-
-    tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(20, 16, "Press");
-    tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(13, 29, "to Start");
+    TDisplayUi::header(tft, "Cave Chopper", TFT_GREEN);
+    TDisplayUi::centered(tft, "Press to Start", 56, 2, TFT_WHITE);
+    TDisplayUi::footer(tft, "B1 tap start / hold thrust in game");
   } else if (showStartScorePage()) {
     char initials[4];
     PlayerProfile::unpackDottedInitials(bestInitials_, initials);
-
-    tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(3, 10, "Top Time");
-
-    tft.setCursor(3, 24);
-    if (bestScore_ == 0) tft.print("--");
-    else {
-      tft.print(initials);
-      tft.print(" ");
-      tft.print(bestScore_);
-      tft.print("s");
-    }
+    TDisplayUi::header(tft, "Top Time", TFT_GREEN);
+    String score = bestScore_ == 0 ? "--" : String(initials) + " " + String(bestScore_) + "s";
+    TDisplayUi::largeValue(tft, score, 54, TFT_GREEN);
+    TDisplayUi::footer(tft, "Best survival time");
   } else {
-    tft.drawLine(1, 12, 71, 12);
-    tft.drawLine(1, 34, 71, 34);
-    drawChopper(tft, 23, 22, true);
-
-    tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(3, 8, appTitle());
+    TDisplayUi::header(tft, "Cave Chopper", TFT_GREEN);
+    tft.fillRect(0, 34, width, 22, TFT_DARKGREEN);
+    tft.fillRect(0, 102, width, 33, TFT_GREEN);
+    drawChopper(tft, 92, 75, true);
+    TDisplayUi::centered(tft, "Hold to climb", 112, 1, TFT_LIGHTGREY);
   }
 }
 
 void CaveChopperGame::drawEnd(TFT_eSPI& tft) { tft.fillScreen(TFT_BLACK);
-  tft.drawRect(0, 0, width + 2, height);
-
-  tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(3, 9, "Crashed");
-
-  tft.setCursor(3, 20);
-  tft.print("Time ");
-  tft.print(score_);
-  tft.print("s");
-  tft.setCursor(3, 29);
-  tft.print("Best ");
-  tft.print(bestScore_);
-  tft.print("s");
+  TDisplayUi::clear(tft);
+  TDisplayUi::header(tft, "Crashed", TFT_RED);
+  TDisplayUi::labelValue(tft, 49, "Time", String(score_) + "s", TFT_YELLOW);
+  String best = String(bestScore_) + "s";
   if (bestScore_ > 0) {
     char initials[4];
     PlayerProfile::unpackDottedInitials(bestInitials_, initials);
-    tft.print(" ");
-    tft.print(initials);
+    best += " ";
+    best += initials;
   }
-  tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(3, 38, "Tap retry Hold menu");
+  TDisplayUi::labelValue(tft, 78, "Best", best, TFT_GREEN);
+  TDisplayUi::footer(tft, "B1 retry / B1 hold menu");
 }
 
 int CaveChopperGame::clampInt(int value, int minValue, int maxValue) const {
@@ -174,7 +160,7 @@ int CaveChopperGame::clampInt(int value, int minValue, int maxValue) const {
 int CaveChopperGame::nextGapTop() {
   randState_ = static_cast<uint16_t>(randState_ * 2053u + 13849u);
   const int step = static_cast<int>(randState_ % 5) - 2;
-  return clampInt(lastGapTop_ + step, 3, static_cast<int>(height) - GAP_H - 3);
+  return clampInt(lastGapTop_ + step * 4, TDisplayUi::HEADER_H + 8, static_cast<int>(height) - GAP_H - 8);
 }
 
 void CaveChopperGame::spawnSegment(float x) {
@@ -190,10 +176,10 @@ void CaveChopperGame::spawnSegment(float x) {
 }
 
 bool CaveChopperGame::collides(const Segment& segment) const {
-  const int px1 = 12;
-  const int px2 = 24;
-  const int py1 = static_cast<int>(y_) - 2;
-  const int py2 = static_cast<int>(y_) + 4;
+  const int px1 = 34;
+  const int px2 = 68;
+  const int py1 = static_cast<int>(y_) - 8;
+  const int py2 = static_cast<int>(y_) + 10;
   const int sx1 = static_cast<int>(segment.x);
   const int sx2 = sx1 + SEG_W - 1;
   if (px2 < sx1 || px1 > sx2) return false;

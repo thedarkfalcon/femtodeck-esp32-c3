@@ -20,10 +20,10 @@ jobs:
       matrix:
         include:
           - board: femtodeck-c3
-            fqbn: esp32:esp32:esp32c3
+            fqbn: esp32:esp32:esp32c3:PartitionScheme=huge_app
             chip: esp32c3
           - board: femtodeck-t-display
-            fqbn: esp32:esp32:esp32
+            fqbn: esp32:esp32:esp32:PartitionScheme=huge_app
             chip: esp32
     runs-on: ubuntu-latest
     steps:

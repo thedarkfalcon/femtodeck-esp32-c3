@@ -5,14 +5,16 @@
 #include <TFT_eSPI.h>
 
 #include "../../PlayerProfile.h"
+#include "../../TDisplayUi.h"
 
 namespace {
-constexpr int HUD_H = 8;
-constexpr int GROUND_Y = 36;
-constexpr int SHIP_X = 35;
-constexpr int LANDER_FOOT_OFFSET = 5;
+constexpr int HUD_H = 28;
+constexpr int GROUND_Y = 124;
+constexpr int SHIP_X = 120;
+constexpr int LANDER_FOOT_OFFSET = 13;
 constexpr uint8_t BURN_HINT_LED_PIN = 8;
 constexpr bool BURN_HINT_LED_ACTIVE_LOW = true;
+constexpr bool BURN_HINT_LED_AVAILABLE = false;
 constexpr float THRUST = 48.0f;
 constexpr float FUEL_BURN = 24.0f;
 constexpr float BURN_CUE_REACTION_SEC = 0.35f;
@@ -28,7 +30,9 @@ bool MiniLanderGame::hasCustomOverlay() const {
 }
 
 void MiniLanderGame::onAppReset() {
-  pinMode(BURN_HINT_LED_PIN, OUTPUT);
+  if (BURN_HINT_LED_AVAILABLE) {
+    pinMode(BURN_HINT_LED_PIN, OUTPUT);
+  }
   setBurnHintLed(false);
   loadBestLevel();
   level_ = 1;
@@ -37,6 +41,7 @@ void MiniLanderGame::onAppReset() {
 }
 
 void MiniLanderGame::updateRunning(uint32_t deltaMs, const ButtonInput& b1, const ButtonInput& b2) {
+  (void)b2;
   const float deltaSec = static_cast<float>(deltaMs) * 0.001f;
 
   if (landerState_ == LanderState::Briefing) {
@@ -99,77 +104,64 @@ void MiniLanderGame::updateRunning(uint32_t deltaMs, const ButtonInput& b1, cons
   }
 }
 
-void void MiniLanderGame::drawRunning(TFT_eSPI& tft) { tft.fillScreen(TFT_BLACK); { tft.fillScreen(TFT_BLACK);
+void MiniLanderGame::drawRunning(TFT_eSPI& tft) {
+  TDisplayUi::clear(tft);
   if (landerState_ == LanderState::Briefing) {
     drawBriefing(tft);
     return;
   }
 
-  tft.drawRect(, 0, width, height);
   drawHud(tft);
   drawGround(tft);
 
   const float altitudeRatio = altitude_ / startAltitude_;
-  const int altitudePixels = altitude_ <= 0.0f ? 0 : max(1, static_cast<int>(ceilf(altitudeRatio * 22.0f)));
+  const int altitudePixels = altitude_ <= 0.0f ? 0 : max(1, static_cast<int>(ceilf(altitudeRatio * 78.0f)));
   const int shipY = GROUND_Y - LANDER_FOOT_OFFSET - altitudePixels;
   drawLander(tft, SHIP_X, shipY, thrusting_);
 
   if (landerState_ == LanderState::Landed) {
-
-    tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(21, 24, "LANDED");
+    TDisplayUi::centered(tft, "LANDED", 54, 4, TFT_GREEN);
   }
 }
 
 void MiniLanderGame::drawStart(TFT_eSPI& tft) { tft.fillScreen(TFT_BLACK);
-  tft.drawRect(0, 0, width + 2, height);
+  TDisplayUi::clear(tft);
   if (showStartPromptPage()) {
-
-    tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(20, 16, "Press");
-    tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(13, 29, "to Start");
+    TDisplayUi::header(tft, "Mini Lander", TFT_CYAN);
+    TDisplayUi::centered(tft, "Press to Start", 56, 2, TFT_WHITE);
+    TDisplayUi::footer(tft, "Hold B1 for thrust");
     return;
   }
   if (showStartScorePage()) {
     char initials[4];
     PlayerProfile::unpackDottedInitials(bestInitials_, initials);
-
-    tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(3, 10, "Best Level");
-
-    tft.setCursor(3, 24);
-    if (bestLevel_ == 0) {
-      tft.print("--");
-    } else {
-      tft.print(initials);
-      tft.print(" L");
-      tft.print(bestLevel_);
-    }
+    TDisplayUi::header(tft, "Best Level", TFT_CYAN);
+    String score = bestLevel_ == 0 ? "--" : String(initials) + " L" + String(bestLevel_);
+    TDisplayUi::largeValue(tft, score, 54, TFT_CYAN);
+    TDisplayUi::footer(tft, "Highest landing level");
     return;
   }
-  tft.drawCircle(17, 20, 12);
-  tft.drawCircle(12, 16, 2);
-  tft.drawCircle(20, 23, 3);
-  tft.drawCircle(23, 14, 1);
-  tft.drawLine(42, 9, 50, 13);
-  tft.drawTriangle(52, 14, 57, 11, 55, 18);
-  tft.drawPixel(39, 8);
-  tft.drawPixel(61, 22);
-  tft.drawPixel(49, 30);
-
-  tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(3, 36, appTitle());
+  TDisplayUi::header(tft, "Mini Lander", TFT_CYAN);
+  tft.fillCircle(56, 72, 28, TFT_DARKGREY);
+  tft.drawCircle(56, 72, 28, TFT_LIGHTGREY);
+  tft.drawCircle(44, 63, 5, TFT_BLACK);
+  tft.drawCircle(65, 81, 7, TFT_BLACK);
+  tft.drawCircle(72, 59, 3, TFT_BLACK);
+  tft.drawLine(140, 47, 162, 57, TFT_WHITE);
+  tft.drawTriangle(166, 58, 181, 51, 176, 70, TFT_WHITE);
+  tft.drawPixel(130, 38, TFT_WHITE);
+  tft.drawPixel(202, 82, TFT_WHITE);
+  tft.drawPixel(166, 102, TFT_WHITE);
+  TDisplayUi::footer(tft, "Time the suicide burn");
 }
 
 void MiniLanderGame::drawEnd(TFT_eSPI& tft) { tft.fillScreen(TFT_BLACK);
-  tft.drawRect(0, 0, width + 2, height);
-
-  tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(3, 9, crashed_ ? "Crashed" : "Mission End");
-  tft.setCursor(3, 21);
-  tft.print("Level:");
-  tft.print(level_);
-  tft.setCursor(3, 32);
-  tft.print("V:");
-  tft.print(static_cast<int>(velocity_ + 0.5f));
-  drawSafeSpeedSign(tft, 57, 25, static_cast<int>(levelSafeSpeed() + 0.5f));
-
-  tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(3, 39, "Tap retry Hold menu");
+  TDisplayUi::clear(tft);
+  TDisplayUi::header(tft, crashed_ ? "Crashed" : "Mission End", crashed_ ? TFT_RED : TFT_GREEN);
+  TDisplayUi::labelValue(tft, 45, "Level", String(level_), TFT_YELLOW);
+  TDisplayUi::labelValue(tft, 72, "Velocity", String(static_cast<int>(velocity_ + 0.5f)), crashed_ ? TFT_RED : TFT_GREEN);
+  drawSafeSpeedSign(tft, 196, 73, static_cast<int>(levelSafeSpeed() + 0.5f));
+  TDisplayUi::footer(tft, "B1 retry / B1 hold menu");
 }
 
 void MiniLanderGame::loadBestLevel() {
@@ -251,72 +243,64 @@ bool MiniLanderGame::shouldShowBurnHint() const {
 }
 
 void MiniLanderGame::setBurnHintLed(bool on) {
+  if (!BURN_HINT_LED_AVAILABLE) {
+    return;
+  }
   digitalWrite(BURN_HINT_LED_PIN, BURN_HINT_LED_ACTIVE_LOW ? !on : on);
 }
 
 void MiniLanderGame::drawSafeSpeedSign(TFT_eSPI& tft, int x, int y, int safeSpeed) {
-  tft.drawCircle(x, y, 8);
-  tft.drawCircle(x, y, 7);
-
-  tft.setCursor(x - (safeSpeed >= 10 ? 5 : 2), y + 3);
+  tft.fillCircle(x, y, 18, TFT_WHITE);
+  tft.drawCircle(x, y, 17, TFT_RED);
+  tft.drawCircle(x, y, 16, TFT_RED);
+  tft.setTextSize(2);
+  tft.setTextColor(TFT_BLACK, TFT_WHITE);
+  tft.setCursor(x - (safeSpeed >= 10 ? 11 : 5), y - 7);
   tft.print(safeSpeed);
 }
 
 void MiniLanderGame::drawBriefing(TFT_eSPI& tft) {
-  tft.drawRect(0, 0, width + 2, height);
-
-  tft.setCursor(3, 8);
-  tft.print("Level ");
-  tft.print(level_);
-
-  tft.setCursor(3, 17);
-  tft.print("Fuel ");
-  tft.print(static_cast<int>(startFuel_ + 0.5f));
-  tft.print("  G ");
-  tft.print(static_cast<int>(levelGravity() + 0.5f));
-  tft.setCursor(3, 26);
-  tft.print("Safe V <= ");
-  tft.print(static_cast<int>(levelSafeSpeed() + 0.5f));
-  tft.setCursor(3, 37);
+  TDisplayUi::header(tft, "Landing Brief", TFT_CYAN, (String("L") + String(level_)).c_str());
+  TDisplayUi::labelValue(tft, 41, "Fuel", String(static_cast<int>(startFuel_ + 0.5f)), TFT_GREEN);
+  TDisplayUi::labelValue(tft, 65, "Gravity", String(static_cast<int>(levelGravity() + 0.5f)), TFT_YELLOW);
+  TDisplayUi::labelValue(tft, 89, "Safe V", "<= " + String(static_cast<int>(levelSafeSpeed() + 0.5f)), TFT_CYAN);
   if (briefingTimerMs_ < BRIEFING_INPUT_LOCK_MS || !briefingCanAcceptInput_) {
-    tft.print("Ready...");
+    TDisplayUi::footer(tft, "Ready...");
   } else {
-    tft.print("Tap start");
+    TDisplayUi::footer(tft, "B1 start descent");
   }
 }
 
 void MiniLanderGame::drawHud(TFT_eSPI& tft) {
-
-  tft.setCursor(2, 6);
-  tft.print("L");
-  tft.print(level_);
-
-  tft.setCursor(14, 8);
-  tft.print(" A");
-  tft.print(static_cast<int>(altitude_ + 0.5f));
-  tft.print(" V");
-  tft.print(static_cast<int>(velocity_ + 0.5f));
-
-  const int fuelH = static_cast<int>(22.0f * (fuel_ / startFuel_));
-  tft.drawRect(66, 10, 3, 24);
-  if (fuelH > 0) {
-    tft.fillRect(67, 33 - fuelH, 1, fuelH);
-  }
+  TDisplayUi::header(tft, "Mini Lander", thrusting_ ? TFT_ORANGE : TFT_CYAN, (String("L") + String(level_)).c_str());
+  tft.setTextSize(2);
+  tft.setTextColor(TFT_WHITE, TFT_BLACK);
+  tft.drawString("A " + String(static_cast<int>(altitude_ + 0.5f)), 10, 34);
+  tft.drawString("V " + String(static_cast<int>(velocity_ + 0.5f)), 10, 56);
+  const uint16_t fuelColor = fuel_ <= startFuel_ * 0.2f ? TFT_RED : TFT_GREEN;
+  TDisplayUi::bar(tft, 10, 83, 64, 10, fuel_ / startFuel_, fuelColor);
+  tft.setTextSize(1);
+  tft.setTextColor(TFT_LIGHTGREY, TFT_BLACK);
+  tft.drawString("Fuel", 10, 96);
 }
 
 void MiniLanderGame::drawLander(TFT_eSPI& tft, int x, int y, bool thrusting) {
-  tft.drawTriangle(x, y - 4, x - 3, y + 2, x + 3, y + 2);
-  tft.drawLine(x - 3, y + 2, x - 5, y + 5);
-  tft.drawLine(x + 3, y + 2, x + 5, y + 5);
+  tft.fillTriangle(x, y - 12, x - 9, y + 5, x + 9, y + 5, TFT_LIGHTGREY);
+  tft.drawTriangle(x, y - 12, x - 9, y + 5, x + 9, y + 5, TFT_WHITE);
+  tft.drawLine(x - 9, y + 5, x - 15, y + 13, TFT_WHITE);
+  tft.drawLine(x + 9, y + 5, x + 15, y + 13, TFT_WHITE);
+  tft.drawFastHLine(x - 18, y + 13, 11, TFT_WHITE);
+  tft.drawFastHLine(x + 7, y + 13, 11, TFT_WHITE);
   if (thrusting) {
-    tft.drawLine(x - 1, y + 3, x, y + 8);
-    tft.drawLine(x + 1, y + 3, x, y + 8);
+    tft.fillTriangle(x - 5, y + 7, x + 5, y + 7, x, y + 25, TFT_ORANGE);
+    tft.drawLine(x - 2, y + 8, x, y + 21, TFT_YELLOW);
+    tft.drawLine(x + 2, y + 8, x, y + 21, TFT_YELLOW);
   }
 }
 
 void MiniLanderGame::drawGround(TFT_eSPI& tft) {
-  tft.drawLine(1, GROUND_Y, width - 2, GROUND_Y);
-  tft.fillRect(27, GROUND_Y - 1, 18, 2);
-  tft.drawPixel(8, GROUND_Y - 2);
-  tft.drawPixel(55, GROUND_Y - 3);
+  tft.drawLine(1, GROUND_Y, width - 2, GROUND_Y, TFT_LIGHTGREY);
+  tft.fillRect(SHIP_X - 30, GROUND_Y - 2, 60, 4, TFT_GREEN);
+  tft.drawPixel(30, GROUND_Y - 8, TFT_LIGHTGREY);
+  tft.drawPixel(205, GROUND_Y - 13, TFT_LIGHTGREY);
 }

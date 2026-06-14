@@ -9,10 +9,13 @@
 #include "src/games/CaveChopperGame.h"
 #include "src/games/CityRacerGame.h"
 #include "src/apps/CountdownApp.h"
+#include "src/apps/ClockApp.h"
 #include "src/apps/CoinFlipperApp.h"
+#include "src/apps/CommunicatorApp.h"
 #include "src/apps/CounterApp.h"
 #include "src/apps/CreditsApp.h"
 #include "src/apps/DiceRollerApp.h"
+#include "src/apps/EspContactsApp.h"
 #include "src/games/FemtoFieldGame.h"
 #include "src/games/FishingFlickGame.h"
 #include "src/games/KnifeThrowGame.h"
@@ -75,6 +78,7 @@ NuclearReactorGame nuclearReactorGame(APP_WIDTH, APP_HEIGHT, APP_LEFT);
 SimonGame simonGame(APP_WIDTH, APP_HEIGHT, APP_LEFT);
 
 StopwatchApp stopwatchApp(APP_WIDTH, APP_HEIGHT, APP_LEFT);
+ClockApp clockApp(APP_WIDTH, APP_HEIGHT, APP_LEFT);
 CountdownApp countdownApp(APP_WIDTH, APP_HEIGHT, APP_LEFT);
 CounterApp counterApp(APP_WIDTH, APP_HEIGHT, APP_LEFT);
 MouseEmulatorApp mouseEmulatorApp(APP_WIDTH, APP_HEIGHT, APP_LEFT);
@@ -84,6 +88,8 @@ CoinFlipperApp coinFlipperApp(APP_WIDTH, APP_HEIGHT, APP_LEFT);
 RandomNumberApp randomNumberApp(APP_WIDTH, APP_HEIGHT, APP_LEFT);
 MetronomeApp metronomeApp(APP_WIDTH, APP_HEIGHT, APP_LEFT);
 PetSimulatorApp petSimulatorApp(APP_WIDTH, APP_HEIGHT, APP_LEFT);
+EspContactsApp espContactsApp(APP_WIDTH, APP_HEIGHT, APP_LEFT);
+CommunicatorApp communicatorApp(APP_WIDTH, APP_HEIGHT, APP_LEFT);
 
 OptionsApp optionsApp(APP_WIDTH, APP_HEIGHT);
 CreditsApp creditsApp(APP_WIDTH, APP_HEIGHT);
@@ -138,6 +144,7 @@ MenuEntry gamesMenu[] = {
 };
 
 MenuEntry utilitiesMenu[] = {
+    {nullptr, MenuAction::Launch, &clockApp},
     {nullptr, MenuAction::Launch, &stopwatchApp},
     {nullptr, MenuAction::Launch, &countdownApp},
     {nullptr, MenuAction::Launch, &counterApp},
@@ -145,6 +152,8 @@ MenuEntry utilitiesMenu[] = {
     {nullptr, MenuAction::Launch, &coinFlipperApp},
     {nullptr, MenuAction::Launch, &randomNumberApp},
     {nullptr, MenuAction::Launch, &metronomeApp},
+    {nullptr, MenuAction::Launch, &espContactsApp},
+    {nullptr, MenuAction::Launch, &communicatorApp},
     {nullptr, MenuAction::Launch, &mouseEmulatorApp},
     {nullptr, MenuAction::Launch, &readingApp},
     {"Back", MenuAction::Back, nullptr},

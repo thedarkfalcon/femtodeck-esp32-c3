@@ -33,6 +33,8 @@ const SaveEntry SAVE_ENTRIES[] = {
     {"Reactor", "reactor"},
     {"Simon", "simon"},
     {"Pet", "pet"},
+    {"Clock", "clock"},
+    {"Contacts", "contacts"},
 };
 
 constexpr uint8_t SAVE_COUNT = sizeof(SAVE_ENTRIES) / sizeof(SAVE_ENTRIES[0]);

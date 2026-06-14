@@ -1,41 +1,71 @@
 #include "CounterApp.h"
+#include "../../TDisplayUi.h"
 #include <TFT_eSPI.h>
 
 CounterApp::CounterApp(uint32_t width, uint32_t height)
     : App("Counter", width, height) {}
 
+void CounterApp::render(TFT_eSPI& tft) {
+  const AppPhase currentPhase = phase();
+  if (!phaseCached_ || currentPhase != renderedPhase_) {
+    phaseCached_ = true;
+    renderedPhase_ = currentPhase;
+    dirty_ = true;
+    startDirty_ = true;
+  }
+  App::render(tft);
+}
+
+void CounterApp::markDirty() {
+  dirty_ = true;
+}
+
 void CounterApp::onAppReset() {
   logic_.reset();
+  markDirty();
 }
 
 void CounterApp::updateRunning(uint32_t deltaMs, const ButtonInput& b1, const ButtonInput& b2) {
-  if (b1.click) logic_.increment();
-  if (b1.longPress) logic_.reset();
+  (void)deltaMs;
+  if (b1.click) {
+    logic_.increment();
+    markDirty();
+  }
+  if (b2.click && logic_.getCount() > 0) {
+    logic_.setCount(logic_.getCount() - 1);
+    markDirty();
+  }
+  if (b1.longPress) {
+    logic_.reset();
+    markDirty();
+  }
 }
 
 void CounterApp::drawRunning(TFT_eSPI& tft) {
-  tft.fillScreen(TFT_BLACK);
-  tft.setTextColor(TFT_GREEN, TFT_BLACK);
-  tft.setTextSize(4);
+  if (!dirty_) {
+    return;
+  }
+  TDisplayUi::clear(tft);
+  TDisplayUi::header(tft, "Counter", TFT_GREEN);
+  TDisplayUi::pill(tft, 174, 36, "B2 -1", TFT_CYAN);
 
   String val = String(logic_.getCount());
-  int x = (240 - tft.textWidth(val)) / 2;
-  tft.drawString(val, x, 50);
+  TDisplayUi::largeValue(tft, val, 55, TFT_GREEN);
 
-  tft.setTextSize(1);
-  tft.setTextColor(TFT_WHITE);
-  tft.drawString("Tap = +1", 10, 110);
-  tft.drawString("Hold = Reset", 150, 110);
+  TDisplayUi::footer(tft, "B1 +1 / B1 hold reset / B2 -1");
+  dirty_ = false;
 }
 
 void CounterApp::drawStart(TFT_eSPI& tft) {
-  tft.fillScreen(TFT_BLACK);
-  tft.setTextColor(TFT_GREEN);
-  tft.setTextSize(3);
-  tft.drawString("Counter", 60, 40);
-  tft.setTextSize(1);
-  tft.setTextColor(TFT_WHITE);
-  tft.drawString("Press Button 1 to Start", 60, 90);
+  if (!startDirty_) {
+    return;
+  }
+  TDisplayUi::clear(tft);
+  TDisplayUi::header(tft, "Counter", TFT_GREEN);
+  TDisplayUi::centered(tft, "Tap to count", 50, 2, TFT_WHITE);
+  TDisplayUi::centered(tft, "B2 counts down", 78, 1, TFT_LIGHTGREY);
+  TDisplayUi::footer(tft, "B1 start");
+  startDirty_ = false;
 }
 
 bool CounterApp::hasCustomOverlay() const { return true; }

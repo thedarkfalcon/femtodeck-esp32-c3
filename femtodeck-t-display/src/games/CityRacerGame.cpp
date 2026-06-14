@@ -5,10 +5,84 @@
 #include <TFT_eSPI.h>
 
 #include "../../PlayerProfile.h"
-
 namespace {
 Preferences cityRacerPrefs;
-constexpr int PLAYER_Y = 30;
+constexpr uint8_t PORTRAIT_ROTATION = 0;
+constexpr int PORTRAIT_W = 135;
+constexpr int PORTRAIT_H = 240;
+constexpr int HUD_H = 27;
+constexpr int PLAYER_Y = 196;
+constexpr int ROAD_X = 12;
+constexpr int ROAD_W = 111;
+constexpr int LANE_W = ROAD_W / 3;
+constexpr int CAR_W = 22;
+constexpr int CAR_H = 30;
+constexpr uint16_t RUNNING_DRAW_MS = 33;
+
+void setPortrait(TFT_eSPI& tft) {
+  tft.setRotation(PORTRAIT_ROTATION);
+}
+
+void clearPortrait(TFT_eSPI& tft) {
+  setPortrait(tft);
+  tft.fillScreen(TFT_BLACK);
+  tft.setTextDatum(TL_DATUM);
+}
+
+template <typename Canvas>
+void clearCanvas(Canvas& canvas) {
+  canvas.fillScreen(TFT_BLACK);
+  canvas.setTextDatum(TL_DATUM);
+  canvas.setTextFont(1);
+}
+
+template <typename Canvas>
+void drawPortraitHeader(Canvas& tft, const char* title, uint16_t color, const String& stat = String()) {
+  tft.fillRect(0, 0, PORTRAIT_W, HUD_H, TFT_BLACK);
+  tft.setTextSize(1);
+  tft.setTextColor(color, TFT_BLACK);
+  tft.drawString(title, 6, 6);
+  if (stat.length() > 0) {
+    tft.setTextColor(TFT_LIGHTGREY, TFT_BLACK);
+    tft.drawString(stat, PORTRAIT_W - tft.textWidth(stat) - 6, 6);
+  }
+  tft.drawFastHLine(0, HUD_H - 1, PORTRAIT_W, TFT_DARKGREY);
+}
+
+template <typename Canvas>
+void drawPortraitFooter(Canvas& tft, const char* text) {
+  tft.fillRect(0, PORTRAIT_H - 17, PORTRAIT_W, 17, TFT_BLACK);
+  tft.drawFastHLine(0, PORTRAIT_H - 18, PORTRAIT_W, TFT_DARKGREY);
+  tft.setTextSize(1);
+  tft.setTextColor(TFT_LIGHTGREY, TFT_BLACK);
+  tft.drawString(text, 6, PORTRAIT_H - 13);
+}
+
+template <typename Canvas>
+void drawCentered(Canvas& tft, const String& text, int y, uint8_t size, uint16_t color) {
+  tft.setTextSize(size);
+  tft.setTextColor(color, TFT_BLACK);
+  tft.drawString(text, (PORTRAIT_W - tft.textWidth(text)) / 2, y);
+}
+
+template <typename Canvas>
+void drawCarShape(Canvas& tft, int x, int y, bool player) {
+  if (player) {
+    tft.fillRoundRect(x, y, CAR_W, CAR_H, 3, TFT_CYAN);
+    tft.fillRect(x + 5, y + 5, CAR_W - 10, 7, TFT_WHITE);
+    tft.fillRect(x + 3, y + 4, 3, 6, TFT_BLACK);
+    tft.fillRect(x + CAR_W - 6, y + 4, 3, 6, TFT_BLACK);
+    tft.fillRect(x + 3, y + CAR_H - 9, 3, 6, TFT_BLACK);
+    tft.fillRect(x + CAR_W - 6, y + CAR_H - 9, 3, 6, TFT_BLACK);
+  } else {
+    tft.fillRoundRect(x, y, CAR_W, CAR_H, 3, TFT_RED);
+    tft.fillRect(x + 5, y + CAR_H - 12, CAR_W - 10, 7, TFT_ORANGE);
+    tft.fillRect(x + 3, y + 4, 3, 6, TFT_BLACK);
+    tft.fillRect(x + CAR_W - 6, y + 4, 3, 6, TFT_BLACK);
+    tft.fillRect(x + 3, y + CAR_H - 9, 3, 6, TFT_BLACK);
+    tft.fillRect(x + CAR_W - 6, y + CAR_H - 9, 3, 6, TFT_BLACK);
+  }
+}
 }
 
 CityRacerGame::CityRacerGame(uint32_t width, uint32_t height)
@@ -25,19 +99,24 @@ void CityRacerGame::onAppReset() {
   rowsSinceLaneChange_ = 0;
   level_ = 1;
   score_ = 0;
-  speed_ = 30.0f;
-  spawnIntervalMs_ = 1250;
-  spawnTimerMs_ = 900;
+  speed_ = 138.0f;
+  spawnIntervalMs_ = 780;
+  spawnTimerMs_ = 360;
   for (uint8_t i = 0; i < ROWS; i++) rows_[i].active = false;
+}
+
+uint16_t CityRacerGame::runningRenderIntervalMs() const {
+  return RUNNING_DRAW_MS;
 }
 
 void CityRacerGame::updateRunning(uint32_t deltaMs, const ButtonInput& b1, const ButtonInput& b2) {
   const float dt = static_cast<float>(deltaMs) * 0.001f;
-  if (b1.click) playerLane_ = (playerLane_ + 1) % LANES;
+  if (b1.click) playerLane_ = (playerLane_ + LANES - 1) % LANES;
+  if (b2.click) playerLane_ = (playerLane_ + 1) % LANES;
 
   level_ = 1 + min<uint16_t>(9, score_ / 35);
-  speed_ = 30.0f + static_cast<float>(min<uint8_t>(level_ - 1, 7)) * 3.8f;
-  spawnIntervalMs_ = 1250 - min<uint16_t>(420, max<int>(0, level_ - 1) * 45);
+  speed_ = 138.0f + static_cast<float>(min<uint8_t>(level_ - 1, 7)) * 13.0f;
+  spawnIntervalMs_ = 780 - min<uint16_t>(230, max<int>(0, level_ - 1) * 24);
 
   spawnTimerMs_ += deltaMs;
   if (spawnTimerMs_ >= spawnIntervalMs_) {
@@ -48,7 +127,7 @@ void CityRacerGame::updateRunning(uint32_t deltaMs, const ButtonInput& b1, const
   for (uint8_t i = 0; i < ROWS; i++) {
     if (!rows_[i].active) continue;
     rows_[i].y += speed_ * dt;
-    if (!rows_[i].counted && rows_[i].y > PLAYER_Y + 8) {
+    if (!rows_[i].counted && rows_[i].y > PLAYER_Y + CAR_H) {
       rows_[i].counted = true;
       for (uint8_t lane = 0; lane < LANES; lane++) {
         if (rows_[i].mask & (1 << lane)) score_++;
@@ -58,8 +137,8 @@ void CityRacerGame::updateRunning(uint32_t deltaMs, const ButtonInput& b1, const
         saveBestScore();
       }
     }
-    if (rows_[i].y > height + 8) rows_[i].active = false;
-    if (rows_[i].y >= PLAYER_Y - 7 && rows_[i].y <= PLAYER_Y + 7 && (rows_[i].mask & (1 << playerLane_))) {
+    if (rows_[i].y > PORTRAIT_H + CAR_H) rows_[i].active = false;
+    if (rows_[i].y >= PLAYER_Y - CAR_H && rows_[i].y <= PLAYER_Y + CAR_H && (rows_[i].mask & (1 << playerLane_))) {
       endApp();
       return;
     }
@@ -82,7 +161,7 @@ uint8_t CityRacerGame::chooseSafeLane() {
 
 void CityRacerGame::spawnRow() {
   for (uint8_t i = 0; i < ROWS; i++) {
-    if (rows_[i].active && rows_[i].y < 15.0f) return;
+    if (rows_[i].active && rows_[i].y < HUD_H + 46.0f) return;
   }
   for (uint8_t i = 0; i < ROWS; i++) {
     if (rows_[i].active) continue;
@@ -97,97 +176,109 @@ void CityRacerGame::spawnRow() {
     }
     rows_[i].active = true;
     rows_[i].counted = false;
-    rows_[i].y = -8.0f;
+    rows_[i].y = HUD_H - CAR_H - 4;
     rows_[i].mask = mask;
     return;
   }
 }
 
-void void CityRacerGame::drawRunning(TFT_eSPI& tft) { tft.fillScreen(TFT_BLACK); { tft.fillScreen(TFT_BLACK);
-  tft.drawRect(, 0, width, height);
-  tft.drawLine(23, 1, 23, height - 2);
-  tft.drawLine(46, 1, 46, height - 2);
-  for (uint8_t i = 0; i < ROWS; i++) {
-    if (!rows_[i].active) continue;
-    for (uint8_t lane = 0; lane < LANES; lane++) {
-      if (rows_[i].mask & (1 << lane)) drawCar(tft, laneX(lane), static_cast<int>(rows_[i].y), false);
-    }
-  }
-  drawCar(tft, laneX(playerLane_), PLAYER_Y, true);
+void CityRacerGame::drawRunning(TFT_eSPI& tft) {
+  setPortrait(tft);
 
-  tft.setCursor(2, 6);
-  tft.print("L");
-  tft.print(level_);
-  tft.print(" ");
-  tft.print(score_);
+  static TFT_eSprite frame(&tft);
+  static bool frameReady = false;
+  static bool frameTried = false;
+
+  if (!frameTried) {
+    frameTried = true;
+    frame.setColorDepth(8);
+    frameReady = frame.createSprite(PORTRAIT_W, PORTRAIT_H) != nullptr;
+  }
+
+  auto drawScene = [this](auto& canvas) {
+    clearCanvas(canvas);
+    drawPortraitHeader(canvas, "City Racer", TFT_BLUE, String("L") + String(level_) + " C" + String(score_));
+    canvas.fillRect(ROAD_X, HUD_H, ROAD_W, PORTRAIT_H - HUD_H, TFT_DARKGREY);
+    canvas.drawRect(ROAD_X, HUD_H, ROAD_W, PORTRAIT_H - HUD_H, TFT_LIGHTGREY);
+    for (uint8_t lane = 1; lane < LANES; lane++) {
+      const int x = ROAD_X + lane * LANE_W;
+      for (int y = HUD_H + 6; y < PORTRAIT_H; y += 24) {
+        canvas.drawFastVLine(x, y, 13, TFT_WHITE);
+      }
+    }
+    for (uint8_t i = 0; i < ROWS; i++) {
+      if (!rows_[i].active) continue;
+      for (uint8_t lane = 0; lane < LANES; lane++) {
+        if (rows_[i].mask & (1 << lane)) {
+          drawCar(canvas, laneX(lane), static_cast<int>(rows_[i].y), false);
+        }
+      }
+    }
+    drawCar(canvas, laneX(playerLane_), PLAYER_Y, true);
+  };
+
+  if (frameReady) {
+    drawScene(frame);
+    frame.pushSprite(0, 0);
+  } else {
+    drawScene(tft);
+  }
 }
 
 void CityRacerGame::drawCar(TFT_eSPI& tft, int x, int y, bool player) const {
-  if (player) {
-    tft.drawRect(x + 1, y, 6, 8);
-    tft.fillRect(x + 2, y + 1, 4, 2);
-  } else {
-    tft.fillRect(x + 1, y, 6, 8);
-
-    tft.drawPixel(x + 2, y + 1);
-    tft.drawPixel(x + 5, y + 1);
-
-  }
+  drawCarShape(tft, x, y, player);
 }
 
-void CityRacerGame::drawStart(TFT_eSPI& tft) { tft.fillScreen(TFT_BLACK);
-  loadBestScore();
-  tft.drawRect(0, 0, width + 2, height);
-  if (showStartPromptPage()) {
+void CityRacerGame::drawCar(TFT_eSprite& sprite, int x, int y, bool player) const {
+  drawCarShape(sprite, x, y, player);
+}
 
-    tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(20, 16, "Press");
-    tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(13, 29, "to Start");
+void CityRacerGame::drawStart(TFT_eSPI& tft) {
+  loadBestScore();
+  clearPortrait(tft);
+  if (showStartPromptPage()) {
+    drawPortraitHeader(tft, "City Racer", TFT_BLUE);
+    drawCentered(tft, "Press", 87, 2, TFT_WHITE);
+    drawCentered(tft, "to Start", 111, 2, TFT_LIGHTGREY);
+    drawPortraitFooter(tft, "B1 left  B2 right");
   } else if (showStartScorePage()) {
     char initials[4];
     PlayerProfile::unpackDottedInitials(bestInitials_, initials);
-
-    tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(3, 10, "Top Cars");
-
-    tft.setCursor(3, 24);
-    if (bestScore_ == 0) tft.print("--");
-    else {
-      tft.print(initials);
-      tft.print(" ");
-      tft.print(bestScore_);
-    }
+    drawPortraitHeader(tft, "Top Cars", TFT_BLUE);
+    String score = bestScore_ == 0 ? "--" : String(initials) + " " + String(bestScore_);
+    drawCentered(tft, score, 96, 2, TFT_BLUE);
+    drawPortraitFooter(tft, "Cars passed");
   } else {
-    tft.drawLine(18, 11, 7, 36);
-    tft.drawLine(54, 11, 66, 36);
-    tft.drawLine(32, 9, 30, 36);
-    tft.drawLine(40, 9, 42, 36);
-    drawCar(tft, 31, 22, true);
-
-    tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(3, 9, appTitle());
+    drawPortraitHeader(tft, "City Racer", TFT_BLUE);
+    tft.fillRect(26, 43, 83, 164, TFT_DARKGREY);
+    tft.drawRect(26, 43, 83, 164, TFT_LIGHTGREY);
+    tft.drawFastVLine(53, 43, 164, TFT_WHITE);
+    tft.drawFastVLine(81, 43, 164, TFT_WHITE);
+    drawCar(tft, 57, 158, true);
+    drawCar(tft, 31, 70, false);
+    drawCar(tft, 84, 96, false);
+    drawPortraitFooter(tft, "Dodge traffic");
   }
 }
 
-void CityRacerGame::drawEnd(TFT_eSPI& tft) { tft.fillScreen(TFT_BLACK);
-  tft.drawRect(0, 0, width + 2, height);
-
-  tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(3, 9, "Crashed");
-
-  tft.setCursor(3, 20);
-  tft.print("Cars ");
-  tft.print(score_);
-  tft.setCursor(3, 29);
-  tft.print("Best ");
-  tft.print(bestScore_);
+void CityRacerGame::drawEnd(TFT_eSPI& tft) {
+  clearPortrait(tft);
+  drawPortraitHeader(tft, "Crashed", TFT_RED);
+  drawCentered(tft, "Cars", 64, 1, TFT_LIGHTGREY);
+  drawCentered(tft, String(score_), 84, 3, TFT_YELLOW);
+  String best = String(bestScore_);
   if (bestScore_ > 0) {
     char initials[4];
     PlayerProfile::unpackDottedInitials(bestInitials_, initials);
-    tft.print(" ");
-    tft.print(initials);
+    best += " ";
+    best += initials;
   }
-  tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(3, 38, "Tap retry Hold menu");
+  drawCentered(tft, "Best " + best, 139, 2, TFT_GREEN);
+  drawPortraitFooter(tft, "B1 retry / hold menu");
 }
 
 int CityRacerGame::laneX(uint8_t lane) const {
-  return 7 + lane * 23;
+  return ROAD_X + static_cast<int>(lane) * LANE_W + (LANE_W - CAR_W) / 2;
 }
 
 void CityRacerGame::loadBestScore() {

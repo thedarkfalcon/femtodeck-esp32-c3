@@ -23,6 +23,10 @@ class MouseEmulatorApp : public App {
     int stepsPerTick_ = 30;
 
     // UI state tracking to minimize redraws
+    bool uiInitialized_ = false;
     bool lastKnownConnection_ = false;
     bool lastKnownEnabled_ = false;
+    int8_t lastConnectionPhase_ = -1;
+    int32_t lastCountdownValue_ = INT32_MIN;
+    int16_t lastMovementPixels_ = -1;
 };

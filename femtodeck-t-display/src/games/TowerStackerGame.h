@@ -17,8 +17,8 @@ class TowerStackerGame : public App {
   private:
     static constexpr uint8_t MAX_LAYERS = 18;
     static constexpr uint8_t LEVEL_HEIGHT = 10;
-    static constexpr int BLOCK_H = 3;
-    static constexpr int HUD_H = 7;
+    static constexpr int BLOCK_H = 8;
+    static constexpr int HUD_H = 30;
 
     struct Layer {
       int x = 0;

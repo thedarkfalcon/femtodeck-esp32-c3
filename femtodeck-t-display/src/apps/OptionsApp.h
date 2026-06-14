@@ -1,11 +1,13 @@
 #pragma once
 
 #include "../../App.h"
+#include "../../TDisplayUi.h"
 
 class OptionsApp : public App {
   public:
     OptionsApp(uint32_t width, uint32_t height);
     bool hasCustomOverlay() const override;
+    void render(TFT_eSPI& tft) override;
 
   protected:
     void onAppReset() override;
@@ -18,6 +20,7 @@ class OptionsApp : public App {
     enum class Mode {
       Main,
       Initials,
+      TextSize,
       Saves,
       ConfirmOne,
       ConfirmAll1,
@@ -30,12 +33,24 @@ class OptionsApp : public App {
     void clearSelectedSave();
     void clearAllSaves();
     void drawFit(TFT_eSPI& tft, int x, int y, const char* text);
+    void markDirty();
 
     Mode mode_ = Mode::Main;
     char initials_[3] = {'J', 'F', '\0'};
     uint8_t selected_ = 0;
     uint8_t mainIndex_ = 0;
     uint8_t saveIndex_ = 0;
+    TDisplayUi::TextSize textSize_ = TDisplayUi::TextSize::Compact;
     const char* message_ = "";
     bool messageToMain_ = false;
+    bool dirty_ = true;
+    bool startDirty_ = true;
+    bool endDirty_ = true;
+    bool runningRendered_ = false;
+    bool phaseCached_ = false;
+    AppPhase renderedPhase_ = AppPhase::Start;
+    Mode renderedMode_ = Mode::Main;
+    TDisplayUi::TextSize renderedTextSize_ = TDisplayUi::TextSize::Compact;
+    uint8_t renderedSaveIndex_ = 255;
+    uint8_t renderedSaveScroll_ = 255;
 };

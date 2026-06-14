@@ -3,9 +3,6 @@
 #include <Arduino.h>
 #include <U8g2lib.h>
 
-const uint8_t DiceRollerApp::DICE[] = {4, 6, 8, 10, 12, 20};
-const uint8_t DiceRollerApp::DICE_COUNT = sizeof(DiceRollerApp::DICE) / sizeof(DiceRollerApp::DICE[0]);
-
 DiceRollerApp::DiceRollerApp(uint32_t width, uint32_t height, uint32_t left)
     : App("Dice Roller", width, height) {
   (void)left;

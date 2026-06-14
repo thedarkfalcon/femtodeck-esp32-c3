@@ -5,6 +5,7 @@
 #include <TFT_eSPI.h>
 
 #include "../../PlayerProfile.h"
+#include "../../TDisplayUi.h"
 
 namespace {
 Preferences towerScorePrefs;
@@ -25,6 +26,7 @@ void TowerStackerGame::onAppReset() {
 }
 
 void TowerStackerGame::updateRunning(uint32_t deltaMs, const ButtonInput& b1, const ButtonInput& b2) {
+  (void)b2;
   const float deltaSec = static_cast<float>(deltaMs) * 0.001f;
   movingX_ += static_cast<float>(movingDir_) * movingSpeed_ * deltaSec;
 
@@ -43,79 +45,65 @@ void TowerStackerGame::updateRunning(uint32_t deltaMs, const ButtonInput& b1, co
   }
 }
 
-void void TowerStackerGame::drawRunning(TFT_eSPI& tft) { tft.fillScreen(TFT_BLACK); { tft.fillScreen(TFT_BLACK);
-  tft.drawRect(, 0, width, height);
+void TowerStackerGame::drawRunning(TFT_eSPI& tft) {
+  TDisplayUi::clear(tft);
+  TDisplayUi::header(tft, "Tower Stacker", TFT_CYAN, (String("L") + String(level_) + " S" + String(score_)).c_str());
+  tft.drawFastHLine(0, height - 1, width, TFT_DARKGREY);
 
-  tft.setCursor(2, 6);
-  tft.print("L");
-  tft.print(level_);
-  tft.print(" ");
-  tft.print(score_);
-
-  const uint8_t visibleLayers = (height - HUD_H - 2) / BLOCK_H;
+  const uint8_t visibleLayers = (height - HUD_H - 3) / BLOCK_H;
   uint8_t firstVisibleLayer = 0;
   if (layerCount_ >= visibleLayers) {
     firstVisibleLayer = layerCount_ - visibleLayers + 1;
   }
 
   for (uint8_t i = firstVisibleLayer; i < layerCount_; i++) {
-    tft.fillRect(layers_[i].x, layerY(i, firstVisibleLayer), layers_[i].w, BLOCK_H);
+    tft.fillRect(layers_[i].x, layerY(i, firstVisibleLayer), layers_[i].w, BLOCK_H - 1,
+                 i % 2 == 0 ? TFT_CYAN : TFT_BLUE);
   }
 
   if (layerCount_ < MAX_LAYERS) {
-    tft.drawRect(static_cast<int>(movingX_), layerY(layerCount_, firstVisibleLayer), movingW_, BLOCK_H);
+    tft.fillRect(static_cast<int>(movingX_), layerY(layerCount_, firstVisibleLayer), movingW_, BLOCK_H - 1, TFT_YELLOW);
+    tft.drawRect(static_cast<int>(movingX_), layerY(layerCount_, firstVisibleLayer), movingW_, BLOCK_H - 1, TFT_WHITE);
   }
 }
 
 void TowerStackerGame::drawStart(TFT_eSPI& tft) { tft.fillScreen(TFT_BLACK);
   loadHighScore();
-  tft.drawRect(0, 0, width + 2, height);
+  TDisplayUi::clear(tft);
   if (showStartPromptPage()) {
-
-    tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(20, 16, "Press");
-    tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(13, 29, "to Start");
+    TDisplayUi::header(tft, "Tower Stacker", TFT_CYAN);
+    TDisplayUi::centered(tft, "Press to Start", 56, 2, TFT_WHITE);
+    TDisplayUi::footer(tft, "B1 drops the moving block");
   } else if (showStartScorePage()) {
     char initials[4];
     PlayerProfile::unpackDottedInitials(highScoreInitials_, initials);
-
-    tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(3, 10, "Top Score");
-
-    tft.setCursor(3, 24);
-    if (highScore_ == 0) {
-      tft.print("--");
-    } else {
-      tft.print(initials);
-      tft.print(" ");
-      tft.print(highScore_);
-    }
+    TDisplayUi::header(tft, "Top Score", TFT_CYAN);
+    String score = highScore_ == 0 ? "--" : String(initials) + " " + String(highScore_);
+    TDisplayUi::largeValue(tft, score, 54, TFT_CYAN);
+    TDisplayUi::footer(tft, "Total stacked blocks");
   } else {
-    tft.fillRect(33, 12, 9, 22);
-    tft.fillRect(29, 18, 17, 16);
-    tft.fillRect(25, 24, 25, 10);
-    tft.drawLine(18, 34, 56, 34);
-
-    tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(3, 10, appTitle());
+    TDisplayUi::header(tft, "Tower Stacker", TFT_CYAN);
+    tft.fillRect(106, 44, 28, 56, TFT_BLUE);
+    tft.fillRect(92, 62, 56, 38, TFT_CYAN);
+    tft.fillRect(75, 81, 90, 19, TFT_YELLOW);
+    tft.drawFastHLine(58, 101, 124, TFT_LIGHTGREY);
+    TDisplayUi::centered(tft, "Stack clean", 112, 1, TFT_LIGHTGREY);
   }
 }
 
 void TowerStackerGame::drawEnd(TFT_eSPI& tft) { tft.fillScreen(TFT_BLACK);
-  tft.drawRect(0, 0, width + 2, height);
-
-  tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(3, 9, "Game Over");
-  tft.setCursor(3, 19);
-  tft.print("Score:");
-  tft.print(score_);
-  tft.setCursor(3, 29);
-  tft.print("Best:");
-  tft.print(highScore_);
+  TDisplayUi::clear(tft);
+  TDisplayUi::header(tft, "Game Over", TFT_RED);
+  TDisplayUi::labelValue(tft, 49, "Score", String(score_), TFT_YELLOW);
+  String best = String(highScore_);
   if (highScore_ > 0) {
     char initials[4];
     PlayerProfile::unpackDottedInitials(highScoreInitials_, initials);
-    tft.print(" ");
-    tft.print(initials);
+    best += " ";
+    best += initials;
   }
-
-  tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(3, 38, "Tap retry Hold menu");
+  TDisplayUi::labelValue(tft, 78, "Best", best, TFT_GREEN);
+  TDisplayUi::footer(tft, "B1 retry / B1 hold menu");
 }
 
 void TowerStackerGame::loadHighScore() {
@@ -138,13 +126,13 @@ void TowerStackerGame::saveHighScore() {
 }
 
 void TowerStackerGame::startTowerLevel() {
-  const int baseW = 36;
+  const int baseW = 112;
   layerCount_ = 1;
   towerHeight_ = 0;
   layers_[0].x = (static_cast<int>(width) - baseW) / 2;
   layers_[0].w = baseW;
   movingDir_ = 1;
-  movingSpeed_ = 15.0f + static_cast<float>(level_ - 1) * 3.0f;
+  movingSpeed_ = 72.0f + static_cast<float>(level_ - 1) * 9.0f;
   prepareNextBlock(baseW);
 }
 
@@ -195,7 +183,7 @@ void TowerStackerGame::prepareNextBlock(int blockWidth) {
   movingW_ = blockWidth;
   movingX_ = 1.0f;
   movingDir_ = 1;
-  movingSpeed_ = min(42.0f, 15.0f + static_cast<float>(level_ - 1) * 3.0f + static_cast<float>(towerHeight_) * 0.35f);
+  movingSpeed_ = min(145.0f, 72.0f + static_cast<float>(level_ - 1) * 9.0f + static_cast<float>(towerHeight_) * 2.5f);
 }
 
 int TowerStackerGame::layerY(uint8_t layer, uint8_t firstVisibleLayer) const {

@@ -5,21 +5,24 @@
 #include <TFT_eSPI.h>
 
 #include "../../PlayerProfile.h"
+#include "../../TDisplayUi.h"
 
 namespace {
 constexpr uint8_t WALL_UP = 1 << 0;
 constexpr uint8_t WALL_RIGHT = 1 << 1;
 constexpr uint8_t WALL_DOWN = 1 << 2;
 constexpr uint8_t WALL_LEFT = 1 << 3;
-constexpr int GRID_X = 3;
-constexpr int GRID_Y = 7;
-constexpr int CELL_W = 7;
-constexpr int CELL_H = 6;
+constexpr int GRID_X = 21;
+constexpr int GRID_Y = 36;
+constexpr int CELL_W = 22;
+constexpr int CELL_H = 15;
 Preferences mazePrefs;
 }
 
 MazeRunnerGame::MazeRunnerGame(uint32_t width, uint32_t height, uint32_t left, bool collectorMode)
-    : App(collectorMode ? "Maze Collector" : "Maze Runner", width, height), (left), collectorMode_(collectorMode) {}
+    : App(collectorMode ? "Maze Collector" : "Maze Runner", width, height), collectorMode_(collectorMode) {
+  (void)left;
+}
 
 bool MazeRunnerGame::hasCustomOverlay() const {
   return true;
@@ -32,6 +35,7 @@ void MazeRunnerGame::onAppReset() {
 }
 
 void MazeRunnerGame::updateRunning(uint32_t deltaMs, const ButtonInput& b1, const ButtonInput& b2) {
+  (void)b2;
   if (timeLeftMs_ > deltaMs) {
     timeLeftMs_ -= deltaMs;
   } else {
@@ -65,18 +69,14 @@ void MazeRunnerGame::updateRunning(uint32_t deltaMs, const ButtonInput& b1, cons
   }
 }
 
-void void MazeRunnerGame::drawRunning(TFT_eSPI& tft) { tft.fillScreen(TFT_BLACK); { tft.fillScreen(TFT_BLACK);
-  tft.drawRect(, 0, width, height);
-
-  tft.setCursor(2, 6);
-  tft.print("L");
-  tft.print(level_);
-  tft.print(" T");
-  tft.print(timeLeftMs_ / 1000);
+void MazeRunnerGame::drawRunning(TFT_eSPI& tft) {
+  TDisplayUi::clear(tft);
+  String stat = "L" + String(level_) + " T" + String(timeLeftMs_ / 1000);
   if (collectorMode_) {
-    tft.print(" K");
-    tft.print(pickupCount_ - __builtin_popcount(collectedMask_));
+    stat += " K";
+    stat += String(pickupCount_ - __builtin_popcount(collectedMask_));
   }
+  TDisplayUi::header(tft, collectorMode_ ? "Maze Collector" : "Maze Runner", collectorMode_ ? TFT_YELLOW : TFT_CYAN, stat.c_str());
 
   for (uint8_t r = 0; r < ROWS; r++) {
     for (uint8_t c = 0; c < COLS; c++) {
@@ -84,24 +84,28 @@ void void MazeRunnerGame::drawRunning(TFT_eSPI& tft) { tft.fillScreen(TFT_BLACK)
       const int x = GRID_X + c * CELL_W;
       const int y = GRID_Y + r * CELL_H;
       if (walls_[cell] & WALL_UP) {
-        tft.drawLine(x, y, x + CELL_W, y);
+        tft.drawLine(x, y, x + CELL_W, y, TFT_LIGHTGREY);
+        tft.drawLine(x, y + 1, x + CELL_W, y + 1, TFT_DARKGREY);
       }
       if (walls_[cell] & WALL_LEFT) {
-        tft.drawLine(x, y, x, y + CELL_H);
+        tft.drawLine(x, y, x, y + CELL_H, TFT_LIGHTGREY);
+        tft.drawLine(x + 1, y, x + 1, y + CELL_H, TFT_DARKGREY);
       }
       if (walls_[cell] & WALL_RIGHT) {
-        tft.drawLine(x + CELL_W, y, x + CELL_W, y + CELL_H);
+        tft.drawLine(x + CELL_W, y, x + CELL_W, y + CELL_H, TFT_LIGHTGREY);
+        tft.drawLine(x + CELL_W - 1, y, x + CELL_W - 1, y + CELL_H, TFT_DARKGREY);
       }
       if (walls_[cell] & WALL_DOWN) {
-        tft.drawLine(x, y + CELL_H, x + CELL_W, y + CELL_H);
+        tft.drawLine(x, y + CELL_H, x + CELL_W, y + CELL_H, TFT_LIGHTGREY);
+        tft.drawLine(x, y + CELL_H - 1, x + CELL_W, y + CELL_H - 1, TFT_DARKGREY);
       }
     }
   }
 
   const uint8_t runnerCol = runnerCell_ % COLS;
   const uint8_t runnerRow = runnerCell_ / COLS;
-  const int runnerX = GRID_X + runnerCol * CELL_W + 3;
-  const int runnerY = GRID_Y + runnerRow * CELL_H + 3;
+  const int runnerX = GRID_X + runnerCol * CELL_W + CELL_W / 2;
+  const int runnerY = GRID_Y + runnerRow * CELL_H + CELL_H / 2;
   if (collectorMode_) {
     for (uint8_t i = 0; i < pickupCount_; i++) {
       if ((collectedMask_ & (1 << i)) != 0) {
@@ -109,85 +113,82 @@ void void MazeRunnerGame::drawRunning(TFT_eSPI& tft) { tft.fillScreen(TFT_BLACK)
       }
       const uint8_t pickupCol = pickupCells_[i] % COLS;
       const uint8_t pickupRow = pickupCells_[i] / COLS;
-      const int pickupX = GRID_X + pickupCol * CELL_W + 3;
-      const int pickupY = GRID_Y + pickupRow * CELL_H + 3;
-      tft.drawCircle(pickupX, pickupY, 2);
-      tft.drawPixel(pickupX, pickupY);
+      const int pickupX = GRID_X + pickupCol * CELL_W + CELL_W / 2;
+      const int pickupY = GRID_Y + pickupRow * CELL_H + CELL_H / 2;
+      tft.fillCircle(pickupX, pickupY, 4, TFT_YELLOW);
+      tft.drawCircle(pickupX, pickupY, 5, TFT_ORANGE);
     }
   }
-  tft.fillRect(runnerX, runnerY - 1, 2, 2);
+  tft.fillCircle(runnerX, runnerY, 5, TFT_GREEN);
+  tft.drawPixel(runnerX + 2, runnerY - 1, TFT_BLACK);
   if (runnerState_ == RunnerState::Choosing && optionCount_ > 0) {
     const Direction option = options_[selectedOption_];
     int x2 = runnerX;
     int y2 = runnerY;
     if (option == Up) {
-      y2 -= 4;
+      y2 -= 11;
     } else if (option == Right) {
-      x2 += 5;
+      x2 += 13;
     } else if (option == Down) {
-      y2 += 4;
+      y2 += 11;
     } else {
-      x2 -= 5;
+      x2 -= 13;
     }
-    tft.drawLine(runnerX, runnerY, x2, y2);
+    tft.drawLine(runnerX, runnerY, x2, y2, TFT_CYAN);
+    tft.fillCircle(x2, y2, 2, TFT_CYAN);
   }
-  const int exitX = GRID_X + (COLS - 1) * CELL_W + 2;
-  const int exitY = GRID_Y + (ROWS - 1) * CELL_H + 1;
-  tft.drawRect(exitX, exitY, 4, 4);
+  const int exitX = GRID_X + (COLS - 1) * CELL_W + CELL_W / 2 - 5;
+  const int exitY = GRID_Y + (ROWS - 1) * CELL_H + CELL_H / 2 - 5;
+  tft.drawRoundRect(exitX, exitY, 10, 10, 2, exitUnlocked() ? TFT_GREEN : TFT_RED);
   if (collectorMode_ && !exitUnlocked()) {
-    tft.drawLine(exitX, exitY, exitX + 3, exitY + 3);
-    tft.drawLine(exitX + 3, exitY, exitX, exitY + 3);
+    tft.drawLine(exitX + 2, exitY + 2, exitX + 8, exitY + 8, TFT_RED);
+    tft.drawLine(exitX + 8, exitY + 2, exitX + 2, exitY + 8, TFT_RED);
   }
+  TDisplayUi::footer(tft, runnerState_ == RunnerState::Choosing ? "B1 choose  Hold run" : "Running...");
 }
 
-void MazeRunnerGame::drawStart(TFT_eSPI& tft) { tft.fillScreen(TFT_BLACK);
+void MazeRunnerGame::drawStart(TFT_eSPI& tft) {
+  TDisplayUi::clear(tft);
   loadBestLevel();
-  tft.drawRect(0, 0, width + 2, height);
   if (showStartPromptPage()) {
-
-    tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(20, 16, "Press");
-    tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(13, 29, "to Start");
+    TDisplayUi::header(tft, appTitle(), collectorMode_ ? TFT_YELLOW : TFT_CYAN);
+    TDisplayUi::centered(tft, "Press", 50, 3, TFT_WHITE);
+    TDisplayUi::centered(tft, "to Start", 78, 2, TFT_LIGHTGREY);
+    TDisplayUi::footer(tft, "B1 start");
   } else if (showStartScorePage()) {
     char initials[4];
     PlayerProfile::unpackDottedInitials(bestInitials_, initials);
 
-    tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(3, 10, "Top Score");
-
-    tft.setCursor(3, 24);
-    if (bestLevel_ == 0) {
-      tft.print("--");
-    } else {
-      tft.print(initials);
-      tft.print(" L");
-      tft.print(bestLevel_);
-    }
+    TDisplayUi::header(tft, "Top Level", TFT_YELLOW);
+    TDisplayUi::largeValue(tft, bestLevel_ == 0 ? String("--") : "L" + String(bestLevel_), 54, TFT_YELLOW);
+    TDisplayUi::centered(tft, bestLevel_ == 0 ? String("") : String(initials), 96, 2, TFT_LIGHTGREY);
+    TDisplayUi::footer(tft, "Best maze level");
   } else {
-
-    tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(3, 10, appTitle());
-
-    tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(3, 21, collectorMode_ ? "Get keys" : "Tap choose");
-    tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(3, 29, "Hold run");
+    TDisplayUi::header(tft, appTitle(), collectorMode_ ? TFT_YELLOW : TFT_CYAN);
+    for (uint8_t x = 0; x < 5; x++) {
+      tft.drawRect(62 + x * 22, 50, 22, 18, TFT_DARKGREY);
+      if (x != 2) tft.drawFastVLine(62 + x * 22, 50, 18, TFT_LIGHTGREY);
+    }
+    tft.fillCircle(99, 59, 5, TFT_GREEN);
+    if (collectorMode_) tft.fillCircle(144, 59, 4, TFT_YELLOW);
+    TDisplayUi::centered(tft, collectorMode_ ? "Collect keys" : "Choose paths", 85, 2, TFT_LIGHTGREY);
+    TDisplayUi::footer(tft, "B1 choose  Hold run");
   }
 }
 
-void MazeRunnerGame::drawEnd(TFT_eSPI& tft) { tft.fillScreen(TFT_BLACK);
-  tft.drawRect(0, 0, width + 2, height);
-
-  tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(3, 9, "Lost");
-
-  tft.setCursor(3, 20);
-  tft.print("Level ");
-  tft.print(level_);
-  tft.setCursor(3, 29);
-  tft.print("Best L");
-  tft.print(bestLevel_);
+void MazeRunnerGame::drawEnd(TFT_eSPI& tft) {
+  TDisplayUi::clear(tft);
+  TDisplayUi::header(tft, "Lost", TFT_RED);
+  TDisplayUi::labelValue(tft, 48, "Level", String(level_), TFT_CYAN);
+  String best = "L" + String(bestLevel_);
   if (bestLevel_ > 0) {
     char initials[4];
     PlayerProfile::unpackDottedInitials(bestInitials_, initials);
-    tft.print(" ");
-    tft.print(initials);
+    best += " ";
+    best += initials;
   }
-  tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.drawString(3, 38, "Tap retry Hold menu");
+  TDisplayUi::labelValue(tft, 78, "Best", best, TFT_YELLOW);
+  TDisplayUi::footer(tft, "B1 retry  Hold menu");
 }
 
 void MazeRunnerGame::loadBestLevel() {

@@ -75,7 +75,7 @@ void App::tick(uint32_t nowMs, bool button1Down, bool button2Down) {
     lastUpdateMs_ = nowMs;
 
     // Global back button (button 2 long press or click in menu)
-    if (b2.longPress) {
+    if (b2.longPress && !(phase_ == AppPhase::Running && consumesButton2HoldInRunning())) {
         requestExitToMenu();
         return;
     }
@@ -118,6 +118,10 @@ void App::render(TFT_eSPI& tft) {
             drawEnd(tft);
             break;
     }
+}
+
+uint16_t App::runningRenderIntervalMs() const {
+    return 33;
 }
 
 bool App::shouldExitToMenu() const {
@@ -171,6 +175,10 @@ void App::drawEnd(TFT_eSPI& tft) {
 }
 
 bool App::startsRunningImmediately() const {
+    return false;
+}
+
+bool App::consumesButton2HoldInRunning() const {
     return false;
 }
 

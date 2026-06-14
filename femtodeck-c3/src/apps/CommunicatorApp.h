@@ -5,14 +5,13 @@
 #include <esp_now.h>
 
 #include "../../App.h"
+#include "../shared/logic/CommunicatorLogic.h"
+#include "../shared/logic/EspContactsLogic.h"
 
 class CommunicatorApp : public App {
   public:
-    struct DictNode {
-      const char* label;
-      const DictNode* children;
-      uint8_t childCount;
-    };
+    using DictNode = CommunicatorLogic::DictNode;
+    using MessagePacket = CommunicatorLogic::MessagePacket;
 
     CommunicatorApp(uint32_t width, uint32_t height, uint32_t left);
 
@@ -29,15 +28,6 @@ class CommunicatorApp : public App {
     static constexpr uint8_t INBOX_SIZE = 8;
     static constexpr uint8_t NO_MESSAGE = 255;
 
-    struct MessagePacket {
-      uint8_t magic0;
-      uint8_t magic1;
-      uint8_t version;
-      uint8_t length;
-      uint8_t path[MAX_PATH];
-      uint32_t nonce;
-    } __attribute__((packed));
-
     struct InboxItem {
       MessagePacket packet;
       uint8_t from[6];
@@ -47,6 +37,7 @@ class CommunicatorApp : public App {
 
     enum class UiMode {
       Send,
+      Recipient,
       Inbox
     };
 
@@ -54,13 +45,17 @@ class CommunicatorApp : public App {
       None,
       Sending,
       Sent,
-      Failed
+      Failed,
+      ContactSaved
     };
 
     bool beginRadio();
     void shutdownRadio();
-    bool sendPacket(const MessagePacket& packet);
+    bool ensurePeer(const uint8_t* mac);
+    bool sendPacket(const MessagePacket& packet, const uint8_t* mac);
     void sendCurrentPath(uint8_t length);
+    void beginRecipientSelect(uint8_t length);
+    void sendMyContact();
     void handleTap();
     void handleHold();
     void handleDoubleTap();
@@ -74,12 +69,17 @@ class CommunicatorApp : public App {
     uint8_t selectedNodeIndex() const;
     const char* packetLeafLabel(const MessagePacket& packet) const;
     const char* nodeLabelAt(const MessagePacket& packet, uint8_t index) const;
+    const char* recipientLabel(uint8_t index) const;
     void copyMac(uint8_t* dest, const uint8_t* src) const;
     bool selectedIsRepeat() const;
+    bool selectedIsSendName() const;
+    uint8_t rootPrefixCount() const;
     uint8_t rootVisibleCount() const;
     void resetClickState();
+    void loadIdentityAndContacts();
     void drawHeader(U8G2& u8g2, const char* title) const;
     void drawSend(U8G2& u8g2);
+    void drawRecipient(U8G2& u8g2);
     void drawInbox(U8G2& u8g2);
     void drawOpenMessage(U8G2& u8g2);
     void drawFeedback(U8G2& u8g2);
@@ -91,11 +91,15 @@ class CommunicatorApp : public App {
     uint32_t left_;
     UiMode uiMode_ = UiMode::Send;
     SendFeedback feedback_ = SendFeedback::None;
+    CommunicatorLogic logic_;
+    EspContacts::ContactBook contactBook_;
     InboxItem inbox_[INBOX_SIZE] = {};
     MessagePacket lastSent_ = {};
+    MessagePacket pendingPacket_ = {};
     uint8_t sendPath_[MAX_PATH] = {};
     uint8_t sendDepth_ = 0;
     uint8_t sendIndex_ = 0;
+    uint8_t recipientIndex_ = 0;
     uint8_t inboxIndex_ = 0;
     uint8_t openInboxIndex_ = NO_MESSAGE;
     uint8_t inboxCount_ = 0;
@@ -104,7 +108,7 @@ class CommunicatorApp : public App {
     bool clickPending_ = false;
     bool sendStatusPending_ = false;
     bool sendStatusSuccess_ = false;
+    char myInitials_[3] = {'J', 'F', '\0'};
     uint32_t clickPendingAtMs_ = 0;
     uint32_t feedbackMs_ = 0;
-    uint32_t nonce_ = 1;
 };

@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-FQBN="${1:-esp32:esp32:esp32c3}"
+FQBN="${1:-esp32:esp32:esp32c3:PartitionScheme=huge_app}"
 SKETCH="${2:-femtodeck-c3}"
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-VERSION_PATH="$SCRIPT_DIR/femtodeck-c3/Version.h"
+VERSION_PATH="$SCRIPT_DIR/$SKETCH/Version.h"
 
 major="$(sed -nE 's/.*VERSION_MAJOR = ([0-9]+).*/\1/p' "$VERSION_PATH")"
 minor="$(sed -nE 's/.*VERSION_MINOR = ([0-9]+).*/\1/p' "$VERSION_PATH")"

@@ -52,7 +52,7 @@ class AlienRaidersGame : public App {
       bool active = false;
     };
 
-    int laneY(uint8_t lane) const;
+    int laneX(uint8_t lane) const;
     void loadBestScore();
     void saveBestScore();
     void spawnEnemy();
@@ -86,6 +86,7 @@ class AlienRaidersGame : public App {
     bool introActive_ = false;
     bool bossActive_ = false;
     bool spreadShotToggle_ = false;
+    int8_t bossDirection_ = 1;
     Enemy enemies_[ENEMIES] = {};
     Shot shots_[SHOTS] = {};
     EnemyShot enemyShots_[ENEMY_SHOTS] = {};

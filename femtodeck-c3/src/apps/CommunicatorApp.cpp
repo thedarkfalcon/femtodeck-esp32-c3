@@ -6,10 +6,9 @@
 #include <esp_wifi.h>
 #include <string.h>
 
+#include "../../PlayerProfile.h"
+
 namespace {
-constexpr uint8_t COMM_MAGIC_0 = 'F';
-constexpr uint8_t COMM_MAGIC_1 = 'C';
-constexpr uint8_t COMM_VERSION = 1;
 constexpr uint8_t ESPNOW_CHANNEL = 6;
 constexpr uint16_t DOUBLE_TAP_MS = 360;
 constexpr uint16_t FEEDBACK_MS = 900;
@@ -168,10 +167,12 @@ bool CommunicatorApp::startsRunningImmediately() const {
 
 void CommunicatorApp::onAppReset() {
   Serial.begin(115200);
+  loadIdentityAndContacts();
   uiMode_ = UiMode::Send;
   feedback_ = SendFeedback::None;
   sendDepth_ = 0;
   sendIndex_ = 0;
+  recipientIndex_ = 0;
   inboxIndex_ = 0;
   openInboxIndex_ = NO_MESSAGE;
   feedbackMs_ = 0;
@@ -179,6 +180,11 @@ void CommunicatorApp::onAppReset() {
   sendStatusSuccess_ = false;
   resetClickState();
   radioReady_ = beginRadio();
+}
+
+void CommunicatorApp::loadIdentityAndContacts() {
+  PlayerProfile::unpackInitials(PlayerProfile::loadInitials(), myInitials_);
+  contactBook_.load();
 }
 
 bool CommunicatorApp::beginRadio() {
@@ -234,6 +240,23 @@ void CommunicatorApp::shutdownRadio() {
   WiFi.disconnect(false, false);
   WiFi.mode(WIFI_OFF);
   radioReady_ = false;
+}
+
+bool CommunicatorApp::ensurePeer(const uint8_t* mac) {
+  if (mac == nullptr) {
+    return false;
+  }
+  if (esp_now_is_peer_exist(mac)) {
+    return true;
+  }
+
+  esp_now_peer_info_t peer = {};
+  memcpy(peer.peer_addr, mac, 6);
+  peer.channel = ESPNOW_CHANNEL;
+  peer.ifidx = WIFI_IF_STA;
+  peer.encrypt = false;
+  const esp_err_t result = esp_now_add_peer(&peer);
+  return result == ESP_OK || result == ESP_ERR_ESPNOW_EXIST;
 }
 
 void CommunicatorApp::updateRunning(uint32_t deltaMs, const ButtonInput& input) {
@@ -303,6 +326,12 @@ void CommunicatorApp::handleTap() {
     return;
   }
 
+  if (uiMode_ == UiMode::Recipient) {
+    const uint8_t count = contactBook_.count() + 1;
+    recipientIndex_ = (recipientIndex_ + 1) % count;
+    return;
+  }
+
   if (openInboxIndex_ != NO_MESSAGE) {
     return;
   }
@@ -313,6 +342,33 @@ void CommunicatorApp::handleTap() {
 
 void CommunicatorApp::handleHold() {
   if (feedback_ == SendFeedback::Sending) {
+    return;
+  }
+
+  if (uiMode_ == UiMode::Recipient) {
+    char to[3];
+    const uint8_t pendingLength = pendingPacket_.length;
+    uint8_t pendingPath[MAX_PATH] = {};
+    memcpy(pendingPath, pendingPacket_.path, MAX_PATH);
+    const uint8_t contactCount = contactBook_.count();
+    const uint8_t boundedIndex = recipientIndex_ > contactCount ? 0 : recipientIndex_;
+    if (boundedIndex == 0) {
+      CommunicatorLogic::setAllRecipient(to);
+      logic_.fillBasePacket(pendingPacket_, CommunicatorLogic::PacketType::Message, myInitials_, to);
+      pendingPacket_.length = pendingLength;
+      memcpy(pendingPacket_.path, pendingPath, MAX_PATH);
+      sendPacket(pendingPacket_, BROADCAST_MAC);
+    } else {
+      const EspContacts::Contact& contact = contactBook_.get(boundedIndex - 1);
+      CommunicatorLogic::copyInitials(to, contact.initials);
+      logic_.fillBasePacket(pendingPacket_, CommunicatorLogic::PacketType::Message, myInitials_, to);
+      pendingPacket_.length = pendingLength;
+      memcpy(pendingPacket_.path, pendingPath, MAX_PATH);
+      sendPacket(pendingPacket_, contact.mac);
+    }
+    uiMode_ = UiMode::Send;
+    sendDepth_ = 0;
+    sendIndex_ = 0;
     return;
   }
 
@@ -331,7 +387,14 @@ void CommunicatorApp::handleHold() {
   }
 
   if (selectedIsRepeat()) {
-    sendPacket(lastSent_);
+    pendingPacket_ = lastSent_;
+    uiMode_ = UiMode::Recipient;
+    recipientIndex_ = 0;
+    return;
+  }
+
+  if (selectedIsSendName()) {
+    sendMyContact();
     return;
   }
 
@@ -352,7 +415,7 @@ void CommunicatorApp::handleHold() {
     return;
   }
 
-  sendCurrentPath(sendDepth_ + 1);
+  beginRecipientSelect(sendDepth_ + 1);
 }
 
 void CommunicatorApp::handleDoubleTap() {
@@ -365,12 +428,18 @@ void CommunicatorApp::handleDoubleTap() {
   if (uiMode_ == UiMode::Send) {
     if (sendDepth_ > 0) {
       sendDepth_--;
-      sendIndex_ = sendDepth_ == 0 && hasLastSent_ ? sendPath_[sendDepth_] + 1 : sendPath_[sendDepth_];
+      sendIndex_ = sendDepth_ == 0 ? sendPath_[sendDepth_] + rootPrefixCount() : sendPath_[sendDepth_];
     } else {
       uiMode_ = UiMode::Inbox;
       inboxIndex_ = 0;
       openInboxIndex_ = NO_MESSAGE;
     }
+    return;
+  }
+
+  if (uiMode_ == UiMode::Recipient) {
+    uiMode_ = UiMode::Send;
+    recipientIndex_ = 0;
     return;
   }
 
@@ -383,29 +452,51 @@ void CommunicatorApp::handleDoubleTap() {
 
 void CommunicatorApp::sendCurrentPath(uint8_t length) {
   MessagePacket packet = {};
-  packet.magic0 = COMM_MAGIC_0;
-  packet.magic1 = COMM_MAGIC_1;
-  packet.version = COMM_VERSION;
+  char to[3];
+  CommunicatorLogic::setAllRecipient(to);
+  logic_.fillBasePacket(packet, CommunicatorLogic::PacketType::Message, myInitials_, to);
   packet.length = length;
   memcpy(packet.path, sendPath_, MAX_PATH);
-  packet.nonce = nonce_++;
-  sendPacket(packet);
+  pendingPacket_ = packet;
+  uiMode_ = UiMode::Recipient;
+  recipientIndex_ = 0;
 }
 
-bool CommunicatorApp::sendPacket(const MessagePacket& packet) {
+void CommunicatorApp::beginRecipientSelect(uint8_t length) {
+  sendCurrentPath(length);
+}
+
+void CommunicatorApp::sendMyContact() {
+  MessagePacket packet = {};
+  char to[3];
+  CommunicatorLogic::setAllRecipient(to);
+  logic_.fillBasePacket(packet, CommunicatorLogic::PacketType::Contact, myInitials_, to);
+  sendPacket(packet, BROADCAST_MAC);
+}
+
+bool CommunicatorApp::sendPacket(const MessagePacket& packet, const uint8_t* mac) {
   if (!radioReady_ || !packetIsValid(packet)) {
     feedback_ = SendFeedback::Failed;
     feedbackMs_ = 0;
     return false;
   }
 
-  lastSent_ = packet;
-  hasLastSent_ = true;
+  if (packet.type == static_cast<uint8_t>(CommunicatorLogic::PacketType::Message)) {
+    lastSent_ = packet;
+    hasLastSent_ = true;
+  }
   feedback_ = SendFeedback::Sending;
   feedbackMs_ = 0;
   sendStatusPending_ = false;
 
-  const esp_err_t result = esp_now_send(BROADCAST_MAC, reinterpret_cast<const uint8_t*>(&packet), sizeof(packet));
+  if (!ensurePeer(mac)) {
+    feedback_ = SendFeedback::Failed;
+    feedbackMs_ = 0;
+    Serial.println("Communicator peer add failed");
+    return false;
+  }
+
+  const esp_err_t result = esp_now_send(mac, reinterpret_cast<const uint8_t*>(&packet), sizeof(packet));
   if (result != ESP_OK) {
     feedback_ = SendFeedback::Failed;
     feedbackMs_ = 0;
@@ -415,7 +506,7 @@ bool CommunicatorApp::sendPacket(const MessagePacket& packet) {
   }
 
   Serial.print("Communicator sent: ");
-  Serial.println(packetLeafLabel(packet));
+  Serial.println(packet.type == static_cast<uint8_t>(CommunicatorLogic::PacketType::Contact) ? "contact" : packetLeafLabel(packet));
   return true;
 }
 
@@ -444,6 +535,19 @@ void CommunicatorApp::handleIncoming(const uint8_t* from, const uint8_t* data, i
     return;
   }
 
+  if (packet.type == static_cast<uint8_t>(CommunicatorLogic::PacketType::Contact)) {
+    contactBook_.upsert(packet.from, from, millis());
+    feedback_ = SendFeedback::ContactSaved;
+    feedbackMs_ = 0;
+    Serial.print("Communicator saved contact: ");
+    Serial.println(packet.from);
+    return;
+  }
+
+  if (!logic_.packetIsForMe(packet, myInitials_)) {
+    return;
+  }
+  contactBook_.upsert(packet.from, from, millis());
   pushInbox(packet, from);
   Serial.print("Communicator received: ");
   Serial.println(packetLeafLabel(packet));
@@ -469,8 +573,7 @@ void CommunicatorApp::pushInbox(const MessagePacket& packet, const uint8_t* from
 }
 
 bool CommunicatorApp::packetIsValid(const MessagePacket& packet) const {
-  return packet.magic0 == COMM_MAGIC_0 && packet.magic1 == COMM_MAGIC_1 && packet.version == COMM_VERSION &&
-         packet.length > 0 && packet.length <= MAX_PATH && nodeAtPath(packet.path, packet.length) != nullptr;
+  return logic_.packetIsValid(packet, CATEGORY_ITEMS, CATEGORY_COUNT);
 }
 
 const CommunicatorApp::DictNode* CommunicatorApp::nodeAtPath(const uint8_t* path, uint8_t length) const {
@@ -518,8 +621,9 @@ const CommunicatorApp::DictNode* CommunicatorApp::selectedSendNode() const {
 }
 
 uint8_t CommunicatorApp::selectedNodeIndex() const {
-  if (sendDepth_ == 0 && hasLastSent_) {
-    return sendIndex_ == 0 ? 0 : sendIndex_ - 1;
+  if (sendDepth_ == 0) {
+    const uint8_t prefix = rootPrefixCount();
+    return sendIndex_ < prefix ? 0 : sendIndex_ - prefix;
   }
   return sendIndex_;
 }
@@ -543,11 +647,19 @@ void CommunicatorApp::copyMac(uint8_t* dest, const uint8_t* src) const {
 }
 
 bool CommunicatorApp::selectedIsRepeat() const {
-  return uiMode_ == UiMode::Send && sendDepth_ == 0 && hasLastSent_ && sendIndex_ == 0;
+  return uiMode_ == UiMode::Send && sendDepth_ == 0 && hasLastSent_ && sendIndex_ == 1;
+}
+
+bool CommunicatorApp::selectedIsSendName() const {
+  return uiMode_ == UiMode::Send && sendDepth_ == 0 && sendIndex_ == 0;
+}
+
+uint8_t CommunicatorApp::rootPrefixCount() const {
+  return 1 + (hasLastSent_ ? 1 : 0);
 }
 
 uint8_t CommunicatorApp::rootVisibleCount() const {
-  return CATEGORY_COUNT + (hasLastSent_ ? 1 : 0);
+  return CATEGORY_COUNT + rootPrefixCount();
 }
 
 void CommunicatorApp::drawRunning(U8G2& u8g2) {
@@ -561,6 +673,8 @@ void CommunicatorApp::drawRunning(U8G2& u8g2) {
     drawOpenMessage(u8g2);
   } else if (uiMode_ == UiMode::Inbox) {
     drawInbox(u8g2);
+  } else if (uiMode_ == UiMode::Recipient) {
+    drawRecipient(u8g2);
   } else {
     drawSend(u8g2);
   }
@@ -592,15 +706,41 @@ void CommunicatorApp::drawSend(U8G2& u8g2) {
     u8g2.drawStr(3, y, item == sendIndex_ ? ">" : " ");
 
     char label[18] = {};
-    if (sendDepth_ == 0 && hasLastSent_ && item == 0) {
+    if (sendDepth_ == 0 && item == 0) {
+      snprintf(label, sizeof(label), "Send Name");
+    } else if (sendDepth_ == 0 && hasLastSent_ && item == 1) {
       snprintf(label, sizeof(label), "Last:%s", packetLeafLabel(lastSent_));
     } else {
-      const uint8_t nodeIndex = sendDepth_ == 0 && hasLastSent_ ? item - 1 : item;
+      const uint8_t nodeIndex = sendDepth_ == 0 ? item - rootPrefixCount() : item;
       if (list != nullptr && nodeIndex < (sendDepth_ == 0 ? CATEGORY_COUNT : count)) {
         snprintf(label, sizeof(label), "%s", list[nodeIndex].label);
       }
     }
     drawFit(u8g2, 10, y, label, 15);
+  }
+}
+
+const char* CommunicatorApp::recipientLabel(uint8_t index) const {
+  if (index == 0) {
+    return "ALL";
+  }
+  if (index - 1 < contactBook_.count()) {
+    return contactBook_.get(index - 1).label;
+  }
+  return "?";
+}
+
+void CommunicatorApp::drawRecipient(U8G2& u8g2) {
+  drawHeader(u8g2, "SEND TO");
+  u8g2.setFont(u8g2_font_4x6_tr);
+
+  const uint8_t count = contactBook_.count() + 1;
+  const uint8_t first = recipientIndex_ >= ROW_COUNT ? recipientIndex_ - ROW_COUNT + 1 : 0;
+  for (uint8_t row = 0; row < ROW_COUNT && first + row < count; row++) {
+    const uint8_t item = first + row;
+    const int y = 16 + row * 6;
+    u8g2.drawStr(3, y, item == recipientIndex_ ? ">" : " ");
+    drawFit(u8g2, 10, y, recipientLabel(item), 15);
   }
 }
 
@@ -633,10 +773,17 @@ void CommunicatorApp::drawOpenMessage(U8G2& u8g2) {
   const MessagePacket& packet = inbox_[openInboxIndex_].packet;
   drawHeader(u8g2, "MESSAGE");
   u8g2.setFont(u8g2_font_4x6_tr);
-  for (uint8_t i = 0; i < packet.length && i < 4; i++) {
-    drawFit(u8g2, 8, 16 + i * 6, nodeLabelAt(packet, i), 14);
+  char line[18] = {};
+  snprintf(line, sizeof(line), "%c%c>%s", packet.from[0], packet.from[1],
+           CommunicatorLogic::isAllRecipient(packet.to) ? "ALL" : packet.to);
+  drawFit(u8g2, 8, 15, line, 14);
+  for (uint8_t i = 0; i < packet.length && i < 3; i++) {
+    drawFit(u8g2, 8, 22 + i * 6, nodeLabelAt(packet, i), 14);
   }
-  u8g2.drawStr(3, 39, "2tap back");
+  if (logic_.firmwareMismatch(packet)) {
+    u8g2.drawStr(46, 39, "v!");
+  }
+  u8g2.drawStr(3, 39, "2tap");
 }
 
 void CommunicatorApp::drawFeedback(U8G2& u8g2) {
@@ -646,6 +793,8 @@ void CommunicatorApp::drawFeedback(U8G2& u8g2) {
     text = "Sent";
   } else if (feedback_ == SendFeedback::Failed) {
     text = "Failed";
+  } else if (feedback_ == SendFeedback::ContactSaved) {
+    text = "Saved";
   }
   const int textW = u8g2.getStrWidth(text);
   u8g2.drawStr((width + 2 - textW) / 2, 18, text);
