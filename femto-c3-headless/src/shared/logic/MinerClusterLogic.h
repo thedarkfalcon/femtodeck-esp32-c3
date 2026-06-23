@@ -60,6 +60,8 @@ constexpr uint32_t MIN_RANGE = 4096;
 constexpr uint32_t MAX_RANGE = 2000000;
 constexpr uint32_t ASSIGNMENT_TIMEOUT_MS = 12000;
 constexpr uint32_t TARGET_ASSIGNMENT_MS = 3000;
+constexpr uint32_t RETRY_BACKOFF_INITIAL_MS = 5000;
+constexpr uint32_t RETRY_BACKOFF_MAX_MS = 300000;
 #if defined(CONFIG_IDF_TARGET_ESP32)
 constexpr uint16_t SLAVE_BATCH_NONCES = 4096;
 #else
@@ -251,6 +253,8 @@ struct MasterStats {
   float poolDifficulty = 0.00015f;
   float bestDifficulty = 0.0f;
   uint32_t uptimeSeconds = 0;
+  uint32_t retryCount = 0;
+  uint32_t retryInSeconds = 0;
   char ssid[33] = "";
   char lastError[72] = "";
 };
@@ -884,7 +888,20 @@ private:
   }
 
   void run() {
-    runWorker();
+    uint32_t retryCount = 0;
+    while (!stopRequested_) {
+      const bool cleanStop = runWorker();
+      shutdownRadio();
+      client_.stop();
+      WiFi.disconnect(false, false);
+
+      if (stopRequested_ || cleanStop) break;
+
+      retryCount++;
+      const uint32_t backoffMs = retryBackoffMs(retryCount);
+      waitRetry(backoffMs, retryCount);
+    }
+
     shutdownRadio();
     client_.stop();
     WiFi.disconnect(false, false);
@@ -893,10 +910,10 @@ private:
     vTaskDelete(nullptr);
   }
 
-  void runWorker() {
-    if (!connectWifi()) return;
-    if (!beginRadio()) return;
-    if (!connectPool()) return;
+  bool runWorker() {
+    if (!connectWifi()) return stopRequested_;
+    if (!beginRadio()) return stopRequested_;
+    if (!connectPool()) return stopRequested_;
 
     Subscribe sub;
     WorkContext work;
@@ -921,7 +938,7 @@ private:
     }
     if (!subscribed) {
       setError("Subscribe timeout");
-      return;
+      return false;
     }
 
     sendAuth(requestId++);
@@ -931,7 +948,7 @@ private:
     while (!stopRequested_) {
       if (!client_.connected()) {
         setError("Pool disconnected");
-        return;
+        return false;
       }
 
       while (client_.available()) {
@@ -948,6 +965,31 @@ private:
       }
       vTaskDelay(1);
       updateRate(lastRateAt, lastLocalHashes);
+    }
+    return true;
+  }
+
+  static uint32_t retryBackoffMs(uint32_t retryCount) {
+    uint32_t delayMs = RETRY_BACKOFF_INITIAL_MS;
+    const uint8_t shifts = retryCount > 1 ? static_cast<uint8_t>(retryCount - 1) : 0;
+    for (uint8_t i = 0; i < shifts && delayMs < RETRY_BACKOFF_MAX_MS; i++) {
+      delayMs *= 2;
+      if (delayMs > RETRY_BACKOFF_MAX_MS) {
+        delayMs = RETRY_BACKOFF_MAX_MS;
+        break;
+      }
+    }
+    return delayMs;
+  }
+
+  void waitRetry(uint32_t delayMs, uint32_t retryCount) {
+    const uint32_t started = millis();
+    while (!stopRequested_) {
+      const uint32_t elapsed = millis() - started;
+      if (elapsed >= delayMs) break;
+      const uint32_t remaining = delayMs - elapsed;
+      setRetry(retryCount, (remaining + 999) / 1000);
+      delay(250);
     }
   }
 
@@ -1505,7 +1547,10 @@ private:
   void setState(MasterState state) {
     portENTER_CRITICAL(&mux_);
     stats_.state = state;
-    if (state != MasterState::Error) stats_.lastError[0] = '\0';
+    if (state != MasterState::Error) {
+      stats_.lastError[0] = '\0';
+      stats_.retryInSeconds = 0;
+    }
     stats_.uptimeSeconds = startedAtMs_ == 0 ? 0 : (millis() - startedAtMs_) / 1000;
     portEXIT_CRITICAL(&mux_);
   }
@@ -1515,6 +1560,13 @@ private:
     stats_.state = MasterState::Error;
     strncpy(stats_.lastError, message, sizeof(stats_.lastError) - 1);
     stats_.lastError[sizeof(stats_.lastError) - 1] = '\0';
+    portEXIT_CRITICAL(&mux_);
+  }
+
+  void setRetry(uint32_t retryCount, uint32_t retryInSeconds) {
+    portENTER_CRITICAL(&mux_);
+    stats_.retryCount = retryCount;
+    stats_.retryInSeconds = retryInSeconds;
     portEXIT_CRITICAL(&mux_);
   }
 
@@ -1662,6 +1714,7 @@ public:
     clusterId_ = 0;
     masterPeerChannel_ = 0;
     assignmentActive_ = false;
+    clearLiveWorkStats();
     setState(SlaveState::Searching);
   }
 
@@ -1721,6 +1774,7 @@ public:
 
     if (type == PacketType::CancelJob && len == static_cast<int>(sizeof(CancelJobPacket))) {
       assignmentActive_ = false;
+      clearLiveWorkStats();
       setState(SlaveState::Paired);
     }
   }
@@ -1777,7 +1831,10 @@ private:
         channel_ = channel_ >= 13 ? 1 : channel_ + 1;
         setChannel(channel_);
       }
-      if (!assignmentActive_) setState(SlaveState::Searching);
+      if (!assignmentActive_) {
+        clearLiveWorkStats();
+        setState(SlaveState::Searching);
+      }
     }
 
     if (assignmentActive_) {
@@ -2026,6 +2083,17 @@ private:
 #if !defined(CONFIG_IDF_TARGET_ESP32)
     delay(1);
 #endif
+  }
+
+  void clearLiveWorkStats() {
+    portENTER_CRITICAL(&mux_);
+    stats_.hashrate = 0;
+    stats_.assignmentSize = 0;
+    stats_.assignmentDone = 0;
+    stats_.currentAssignmentId = 0;
+    stats_.lastResultHashes = 0;
+    stats_.lastResultMs = 0;
+    portEXIT_CRITICAL(&mux_);
   }
 
   void setState(SlaveState state) {
