@@ -59,11 +59,15 @@ jobs:
           # Use find to locate build artifacts and copy them to dist
           find ${{ matrix.board }}/build -name "*.bin" -exec cp {} "$firmware_dir/" \;
 
-          # Find the merged binary specifically if it exists (C3 core often generates it)
+          # Find the merged binary specifically and copy it to a stable release name.
+          # The browser installer and helper scripts use the merged image so fresh
+          # devices get bootloader, partition table, boot app, and sketch together.
           merged_bin=$(find ${{ matrix.board }}/build -name "*.merged.bin" | head -n 1)
-          if [[ -n "$merged_bin" ]]; then
-            cp "$merged_bin" "$firmware_dir/${{ matrix.board }}-merged.bin"
+          if [[ -z "$merged_bin" ]]; then
+            echo "Merged binary not found for ${{ matrix.board }}" >&2
+            exit 1
           fi
+          cp "$merged_bin" "$firmware_dir/${{ matrix.board }}-merged.bin"
 
           build_text="$(sed -nE 's/.*BUILD_TEXT = "([^"]+)".*/\1/p' ${{ matrix.board }}/Version.h)"
           if [[ -z "$build_text" ]]; then
@@ -76,13 +80,13 @@ jobs:
             @echo off
             python -m pip install --upgrade esptool
             python -m esptool --chip esp32c3 --port %1 --baud 460800 write_flash -z 0x0 ${{ matrix.board }}-merged.bin
-EOF
+          EOF
           else
             cat > "$firmware_dir/flash-windows.bat" <<EOF
             @echo off
             python -m pip install --upgrade esptool
-            python -m esptool --chip esp32 --port %1 --baud 460800 write_flash -z 0x10000 ${{ matrix.board }}.ino.bin
-EOF
+            python -m esptool --chip esp32 --port %1 --baud 460800 write_flash -z 0x0 ${{ matrix.board }}-merged.bin
+          EOF
           fi
 
           echo "build_text=$build_text" >> "$GITHUB_OUTPUT"
@@ -133,7 +137,7 @@ EOF
                 "name": "FemtoDeck T-Display",
                 "chipFamily": "ESP32",
                 "parts": [
-                  { "path": "firmware/femtodeck-t-display-firmware/femtodeck-t-display.ino.bin", "offset": 65536 }
+                  { "path": "firmware/femtodeck-t-display-firmware/femtodeck-t-display-merged.bin", "offset": 0 }
                 ]
               }
             ]
@@ -153,7 +157,7 @@ EOF
               <a href="simulator/">Open C3 Simulator</a>
             </body>
           </html>
-EOF
+          EOF
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
