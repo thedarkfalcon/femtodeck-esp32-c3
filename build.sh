@@ -1,35 +1,52 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-FQBN="${1:-esp32:esp32:esp32c3:PartitionScheme=huge_app}"
-SKETCH="${2:-femtodeck-c3}"
-
+ESP32_BOARD_URL="https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json"
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-VERSION_PATH="$SCRIPT_DIR/$SKETCH/Version.h"
 
-major="$(sed -nE 's/.*VERSION_MAJOR = ([0-9]+).*/\1/p' "$VERSION_PATH")"
-minor="$(sed -nE 's/.*VERSION_MINOR = ([0-9]+).*/\1/p' "$VERSION_PATH")"
-build="$(sed -nE 's/.*BUILD_NUMBER = ([0-9]+).*/\1/p' "$VERSION_PATH")"
+TARGETS=(
+  "femtodeck-c3|esp32:esp32:esp32c3:PartitionScheme=huge_app"
+  "femtodeck-t-display|esp32:esp32:esp32:PartitionScheme=huge_app"
+  "femto-c3-headless|esp32:esp32:esp32c3:PartitionScheme=huge_app"
+)
 
-if [[ -z "$major" || -z "$minor" || -z "$build" ]]; then
-  echo "Could not read version fields from $VERSION_PATH" >&2
-  exit 1
-fi
+sync_shared_code() {
+  local sketch="$1"
+  local source="$SCRIPT_DIR/shared"
+  local dest_parent="$SCRIPT_DIR/$sketch/src"
+  local dest="$dest_parent/shared"
 
-next_build="$((build + 1))"
-build_text="v${major}.${minor} b${next_build}"
+  if [[ ! -d "$source" ]]; then
+    echo "Shared source folder not found: $source" >&2
+    exit 1
+  fi
 
-if sed --version >/dev/null 2>&1; then
-  sed -i -E \
-    -e "s/(BUILD_NUMBER = )[0-9]+;/\\1${next_build};/" \
-    -e "s/(BUILD_TEXT = \")[^\"]+(\";)/\\1${build_text}\\2/" \
-    "$VERSION_PATH"
-else
-  sed -i '' -E \
-    -e "s/(BUILD_NUMBER = )[0-9]+;/\\1${next_build};/" \
-    -e "s/(BUILD_TEXT = \")[^\"]+(\";)/\\1${build_text}\\2/" \
-    "$VERSION_PATH"
-fi
+  rm -rf "$dest"
+  mkdir -p "$dest_parent"
+  cp -R "$source" "$dest"
+  echo "Synced shared code -> $sketch/src/shared"
+}
 
-echo "Building $build_text"
-arduino-cli compile --fqbn "$FQBN" "$SKETCH"
+echo "Preparing Arduino CLI dependencies"
+arduino-cli config init >/dev/null 2>&1 || true
+arduino-cli config set board_manager.additional_urls "$ESP32_BOARD_URL"
+arduino-cli core update-index
+arduino-cli core install esp32:esp32
+arduino-cli lib install U8g2 "NimBLE-Arduino" "TFT_eSPI" ArduinoJson
+
+for target in "${TARGETS[@]}"; do
+  IFS='|' read -r sketch fqbn <<< "$target"
+  sync_shared_code "$sketch"
+done
+
+cd "$SCRIPT_DIR"
+
+for target in "${TARGETS[@]}"; do
+  IFS='|' read -r sketch fqbn <<< "$target"
+  echo
+  echo "Building $sketch"
+  arduino-cli compile --fqbn "$fqbn" "$sketch"
+done
+
+echo
+echo "All FemtoDeck targets built successfully"

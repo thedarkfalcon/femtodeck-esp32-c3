@@ -45,6 +45,13 @@ jobs:
       - name: Install libraries
         run: arduino-cli lib install U8g2 "NimBLE-Arduino" "TFT_eSPI" ArduinoJson
 
+      - name: Prepare shared code
+        shell: bash
+        run: |
+          rm -rf "${{ matrix.board }}/src/shared"
+          mkdir -p "${{ matrix.board }}/src"
+          cp -R shared "${{ matrix.board }}/src/shared"
+
       - name: Compile sketch
         run: arduino-cli compile --export-binaries --fqbn ${{ matrix.fqbn }} ${{ matrix.board }}
 

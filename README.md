@@ -161,27 +161,23 @@ Performance notes:
 
 ## Build
 
-Install the ESP32 core and required libraries:
+Use the build script for your platform. It installs/updates the ESP32 Arduino core, installs the required libraries, copies the root `shared/` source into each sketch's generated `src/shared/` folder, and compiles all three firmware targets.
 
-```sh
-arduino-cli core install esp32:esp32
-arduino-cli lib install U8g2 "NimBLE-Arduino" "TFT_eSPI" ArduinoJson
+Windows:
+
+```powershell
+.\build.ps1
 ```
 
-### Compile for ESP32-C3:
+Linux/macOS:
+
 ```sh
-arduino-cli compile --fqbn esp32:esp32:esp32c3:PartitionScheme=huge_app femtodeck-c3
+./build.sh
 ```
 
-### Compile for T-Display:
-```sh
-arduino-cli compile --fqbn esp32:esp32:esp32:PartitionScheme=huge_app femtodeck-t-display
-```
+The build scripts do not bump `Version.h`; release/version bumps should be made explicitly.
 
-### Compile for headless ESP32-C3:
-```sh
-arduino-cli compile --fqbn esp32:esp32:esp32c3:PartitionScheme=huge_app femto-c3-headless
-```
+The root `shared/` folder is the single tracked source of truth for shared logic. The board-local `src/shared/` folders are generated during local and GitHub Actions builds and are ignored by Git.
 
 The T-Display target includes a repo-local `tft_setup.h` for TFT_eSPI, so you should not need to edit the installed TFT_eSPI library setup files.
 
