@@ -1,5 +1,17 @@
 # Release Notes
 
+## v2.0 b80
+
+- Expanded T-Display Screen Saver with Matrix Rain, Plasma, Fire, Bouncing Balls, Bezier Ribbons, Lissajous, Snowfall, Fireworks, Hyperspace Grid, Radar Sweep, Kaleidoscope, Spirograph, Sandstorm, and Night Drive.
+- Expanded C3 Screen Saver with Matrix Rain, Snowfall, Lissajous, Radar Sweep, and Fireworks.
+
+## v2.0 b79
+
+- Added a Screen Saver utility on T-Display and C3.
+- Added T-Display screen savers inspired by classic Windows effects: starfield, longer-running connected 2D pipes, stargate tunnel, swirling lines, fractal zoom, and bouncing `Femto OS` text.
+- Added compact C3 screen savers for starfield, bouncing `Femto OS` text, and swirling lines.
+- Wired Screen Saver into the Apps/Utilities menus and T-Display autolaunch choices.
+
 ## v2.0 b78
 
 - Changed the headless ESP32-C3 build from a single-purpose miner slave into a tiny LED/button launcher with Mouse Emulator and Slave Miner apps.

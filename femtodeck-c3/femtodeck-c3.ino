@@ -34,6 +34,7 @@
 #include "PlayerProfile.h"
 #include "src/apps/RandomNumberApp.h"
 #include "src/apps/ReadingApp.h"
+#include "src/apps/ScreenSaverApp.h"
 #include "src/games/SimonGame.h"
 #include "src/apps/StopwatchApp.h"
 #include "src/apps/WiFiSetupApp.h"
@@ -91,6 +92,7 @@ ReadingApp readingApp(APP_WIDTH, APP_HEIGHT, APP_LEFT);
 DiceRollerApp diceRollerApp(APP_WIDTH, APP_HEIGHT, APP_LEFT);
 CoinFlipperApp coinFlipperApp(APP_WIDTH, APP_HEIGHT, APP_LEFT);
 RandomNumberApp randomNumberApp(APP_WIDTH, APP_HEIGHT, APP_LEFT);
+ScreenSaverApp screenSaverApp(APP_WIDTH, APP_HEIGHT, APP_LEFT);
 MetronomeApp metronomeApp(APP_WIDTH, APP_HEIGHT, APP_LEFT);
 PetSimulatorApp petSimulatorApp(APP_WIDTH, APP_HEIGHT, APP_LEFT);
 EspContactsApp espContactsApp(APP_WIDTH, APP_HEIGHT, APP_LEFT);
@@ -159,6 +161,7 @@ MenuEntry utilitiesMenu[] = {
     {nullptr, MenuAction::Launch, &diceRollerApp},
     {nullptr, MenuAction::Launch, &coinFlipperApp},
     {nullptr, MenuAction::Launch, &randomNumberApp},
+    {nullptr, MenuAction::Launch, &screenSaverApp},
     {nullptr, MenuAction::Launch, &metronomeApp},
     {nullptr, MenuAction::Launch, &femtoMinerApp},
     {nullptr, MenuAction::Launch, &distributedMinerApp},

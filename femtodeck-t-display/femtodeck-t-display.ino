@@ -10,6 +10,7 @@
 #include "src/apps/DiceRollerApp.h"
 #include "src/apps/CoinFlipperApp.h"
 #include "src/apps/RandomNumberApp.h"
+#include "src/apps/ScreenSaverApp.h"
 #include "src/apps/StopwatchApp.h"
 #include "src/apps/CountdownApp.h"
 #include "src/apps/ClockApp.h"
@@ -72,6 +73,7 @@ MouseEmulatorApp mouseEmulatorApp(SCREEN_WIDTH, SCREEN_HEIGHT);
 DiceRollerApp diceRollerApp(SCREEN_WIDTH, SCREEN_HEIGHT);
 CoinFlipperApp coinFlipperApp(SCREEN_WIDTH, SCREEN_HEIGHT);
 RandomNumberApp randomNumberApp(SCREEN_WIDTH, SCREEN_HEIGHT);
+ScreenSaverApp screenSaverApp(SCREEN_WIDTH, SCREEN_HEIGHT);
 StopwatchApp stopwatchApp(SCREEN_WIDTH, SCREEN_HEIGHT);
 ClockApp clockApp(SCREEN_WIDTH, SCREEN_HEIGHT);
 FemtoMinerApp femtoMinerApp(SCREEN_WIDTH, SCREEN_HEIGHT);
@@ -165,6 +167,7 @@ MenuEntry appsMenu[] = {
     {nullptr, MenuAction::Launch, &diceRollerApp},
     {nullptr, MenuAction::Launch, &coinFlipperApp},
     {nullptr, MenuAction::Launch, &randomNumberApp},
+    {nullptr, MenuAction::Launch, &screenSaverApp},
     {nullptr, MenuAction::Launch, &metronomeApp},
     {nullptr, MenuAction::Launch, &femtoMinerApp},
     {nullptr, MenuAction::Launch, &distributedMinerApp},
@@ -209,6 +212,7 @@ App* autoLaunchChoices[] = {
     &diceRollerApp,
     &coinFlipperApp,
     &randomNumberApp,
+    &screenSaverApp,
     &metronomeApp,
     &femtoMinerApp,
     &distributedMinerApp,

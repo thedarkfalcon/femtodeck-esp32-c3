@@ -47,6 +47,7 @@ const CreditPage CREDIT_PAGES[] = {
     {"Counter", "thedarkfalcon", nullptr},
     {"Mouse Emulator", "thedarkfalcon", nullptr},
     {"Reading", "thedarkfalcon", nullptr},
+    {"Screen Saver", "thedarkfalcon", nullptr},
     {"Stopwatch", "thedarkfalcon", nullptr},
     {"Countdown", "thedarkfalcon", nullptr},
     {"Dice Roller", "thedarkfalcon", nullptr},
