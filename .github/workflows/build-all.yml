@@ -108,6 +108,9 @@ jobs:
     needs: compile
     runs-on: ubuntu-latest
     if: github.event_name != 'pull_request' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -172,4 +175,61 @@ jobs:
           path: site
 
       - name: Deploy to GitHub Pages
+        id: deployment
         uses: actions/deploy-pages@v4
+
+  release:
+    needs: compile
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download firmware artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-artifacts
+
+      - name: Package release assets
+        id: release_info
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          mkdir -p release-dist
+
+          build_text="$(sed -nE 's/.*BUILD_TEXT = "([^"]+)".*/\1/p' femtodeck-c3/Version.h)"
+          if [[ -z "$build_text" ]]; then
+            build_text="${GITHUB_REF_NAME}"
+          fi
+
+          for artifact_dir in release-artifacts/*-firmware; do
+            artifact_name="$(basename "$artifact_dir")"
+            zip_path="$PWD/release-dist/${artifact_name}-${GITHUB_REF_NAME}.zip"
+            (cd "$artifact_dir" && python3 -m zipfile -c "$zip_path" .)
+          done
+
+          cat > release-dist/release-notes.md <<EOF
+          FemtoDeck ${build_text} firmware build.
+
+          Includes firmware packages for:
+          - FemtoDeck C3
+          - FemtoDeck T-Display
+          - Femto C3 Headless
+
+          Each ZIP includes the merged firmware binary plus supporting build outputs and a Windows flash helper script.
+
+          The GitHub Pages web flasher is built separately from main and does not depend on this Release.
+          EOF
+
+          echo "build_text=$build_text" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: FemtoDeck ${{ steps.release_info.outputs.build_text }}
+          body_path: release-dist/release-notes.md
+          files: release-dist/*.zip
+          fail_on_unmatched_files: true
+          make_latest: true
