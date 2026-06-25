@@ -1,4 +1,4 @@
-name: Build FemtoDeck
+name: Build Femto OS
 
 on:
   push:
@@ -19,13 +19,13 @@ jobs:
     strategy:
       matrix:
         include:
-          - board: femtodeck-c3
+          - board: FemtoOS-C3
             fqbn: esp32:esp32:esp32c3:PartitionScheme=huge_app
             chip: esp32c3
-          - board: femtodeck-t-display
+          - board: FemtoOS-T-Display
             fqbn: esp32:esp32:esp32:PartitionScheme=huge_app
             chip: esp32
-          - board: femto-c3-headless
+          - board: FemtoOS-C3-Headless
             fqbn: esp32:esp32:esp32c3:PartitionScheme=huge_app
             chip: esp32c3
     runs-on: ubuntu-latest
@@ -132,45 +132,45 @@ jobs:
           fi
           sed -i "s/__BUILD_TEXT__/${build_text}/g" site/index.html
 
-          cat > site/manifest-femtodeck-c3.json <<EOF
+          cat > site/manifest-FemtoOS-C3.json <<EOF
           {
-            "name": "FemtoDeck C3",
+            "name": "Femto OS for C3",
             "version": "${build_text}",
             "builds": [
               {
                 "chipFamily": "ESP32-C3",
                 "parts": [
-                  { "path": "firmware/femtodeck-c3-firmware/femtodeck-c3-merged.bin", "offset": 0 }
+                  { "path": "firmware/FemtoOS-C3-firmware/FemtoOS-C3-merged.bin", "offset": 0 }
                 ]
               }
             ]
           }
           EOF
 
-          cat > site/manifest-femto-c3-headless.json <<EOF
+          cat > site/manifest-FemtoOS-C3-Headless.json <<EOF
           {
-            "name": "Femto C3 Headless",
+            "name": "Femto OS for C3 Headless",
             "version": "${build_text}",
             "builds": [
               {
                 "chipFamily": "ESP32-C3",
                 "parts": [
-                  { "path": "firmware/femto-c3-headless-firmware/femto-c3-headless-merged.bin", "offset": 0 }
+                  { "path": "firmware/FemtoOS-C3-Headless-firmware/FemtoOS-C3-Headless-merged.bin", "offset": 0 }
                 ]
               }
             ]
           }
           EOF
 
-          cat > site/manifest-femtodeck-t-display.json <<EOF
+          cat > site/manifest-FemtoOS-T-Display.json <<EOF
           {
-            "name": "FemtoDeck T-Display",
+            "name": "Femto OS for T-Display",
             "version": "${build_text}",
             "builds": [
               {
                 "chipFamily": "ESP32",
                 "parts": [
-                  { "path": "firmware/femtodeck-t-display-firmware/femtodeck-t-display-merged.bin", "offset": 0 }
+                  { "path": "firmware/FemtoOS-T-Display-firmware/FemtoOS-T-Display-merged.bin", "offset": 0 }
                 ]
               }
             ]
@@ -179,28 +179,28 @@ jobs:
 
           cat > site/manifest.json <<EOF
           {
-            "name": "FemtoDeck",
+            "name": "Femto OS",
             "version": "${build_text}",
             "builds": [
               {
-                "name": "FemtoDeck C3",
+                "name": "Femto OS for C3",
                 "chipFamily": "ESP32-C3",
                 "parts": [
-                  { "path": "firmware/femtodeck-c3-firmware/femtodeck-c3-merged.bin", "offset": 0 }
+                  { "path": "firmware/FemtoOS-C3-firmware/FemtoOS-C3-merged.bin", "offset": 0 }
                 ]
               },
               {
-                "name": "Femto C3 Headless",
+                "name": "Femto OS for C3 Headless",
                 "chipFamily": "ESP32-C3",
                 "parts": [
-                  { "path": "firmware/femto-c3-headless-firmware/femto-c3-headless-merged.bin", "offset": 0 }
+                  { "path": "firmware/FemtoOS-C3-Headless-firmware/FemtoOS-C3-Headless-merged.bin", "offset": 0 }
                 ]
               },
               {
-                "name": "FemtoDeck T-Display",
+                "name": "Femto OS for T-Display",
                 "chipFamily": "ESP32",
                 "parts": [
-                  { "path": "firmware/femtodeck-t-display-firmware/femtodeck-t-display-merged.bin", "offset": 0 }
+                  { "path": "firmware/FemtoOS-T-Display-firmware/FemtoOS-T-Display-merged.bin", "offset": 0 }
                 ]
               }
             ]
@@ -249,12 +249,12 @@ jobs:
           done
 
           cat > release-dist/release-notes.md <<EOF
-          FemtoDeck ${build_text} firmware build.
+          Femto OS ${build_text} firmware build.
 
           Includes firmware packages for:
-          - FemtoDeck C3
-          - FemtoDeck T-Display
-          - Femto C3 Headless
+          - Femto OS for C3
+          - Femto OS for T-Display
+          - Femto OS for C3 Headless
 
           Each ZIP includes the merged firmware binary plus supporting build outputs and a Windows flash helper script.
 
@@ -266,7 +266,7 @@ jobs:
       - name: Create GitHub release
         uses: softprops/action-gh-release@v2
         with:
-          name: FemtoDeck ${{ steps.release_info.outputs.build_text }}
+          name: Femto OS ${{ steps.release_info.outputs.build_text }}
           body_path: release-dist/release-notes.md
           files: release-dist/*.zip
           fail_on_unmatched_files: true

@@ -1,9 +1,10 @@
 .github/instructions/
 TODO.txt
-femtodeck-c3/build/
-femtodeck-c3/src/shared/
-femtodeck-t-display/src/shared/
-femto-c3-headless/build/
-femto-c3-headless/src/shared/
+FemtoOS-C3/build/
+FemtoOS-C3/src/shared/
+FemtoOS-T-Display/build/
+FemtoOS-T-Display/src/shared/
+FemtoOS-C3-Headless/build/
+FemtoOS-C3-Headless/src/shared/
 dist/
 site/

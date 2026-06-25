@@ -1,6 +1,6 @@
 # Femto Miner
 
-Femto Miner is FemtoDeck's solo mining utility. It connects directly to a Stratum pool using saved FemtoDeck WiFi profiles and a small mining engine adapted from NerdMiner_v2.
+Femto Miner is Femto OS's solo mining utility. It connects directly to a Stratum pool using saved Femto OS WiFi profiles and a small mining engine adapted from NerdMiner_v2.
 
 It is mostly a tiny-device experiment. Expected mining odds are extremely small.
 

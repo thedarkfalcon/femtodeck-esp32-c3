@@ -1,12 +1,12 @@
 # Mouse Emulator
 
-Mouse Emulator is FemtoDeck's Bluetooth HID mouse utility. It advertises as a real mouse profile, pairs with a host computer, and performs occasional movement sweeps with small vertical variation.
+Mouse Emulator is Femto OS's Bluetooth HID mouse utility. It advertises as a real mouse profile, pairs with a host computer, and performs occasional movement sweeps with small vertical variation.
 
 ## Supported Builds
 
-- FemtoDeck C3
-- FemtoDeck T-Display
-- Femto C3 Headless
+- Femto OS for C3
+- Femto OS for T-Display
+- Femto OS for C3 Headless
 
 The headless C3 build includes a no-screen Mouse Emulator app with fixed Logitech identity and LED/button controls.
 
@@ -36,7 +36,7 @@ The app uses NimBLE and presents as a Bluetooth HID mouse with no PIN entry.
 
 ## Controls
 
-### FemtoDeck C3
+### Femto OS for C3
 
 On the profile screen:
 
@@ -48,7 +48,7 @@ While running:
 - Tap: toggle movement active/paused.
 - Hold: exit to menu and stop Bluetooth advertising.
 
-### FemtoDeck T-Display
+### Femto OS for T-Display
 
 On the profile screen:
 
@@ -60,7 +60,7 @@ While running:
 - Button 1: toggle movement active/paused.
 - Button 2 hold: exit to menu and stop Bluetooth advertising.
 
-### Femto C3 Headless
+### Femto OS for C3 Headless
 
 The headless build always uses the Logitech profile and has no profile picker.
 

@@ -245,7 +245,7 @@ void FemtoMinerApp::handleSave() {
   config.poolPass = server_.arg("pass");
   config.poolPort = static_cast<uint16_t>(server_.arg("port").toInt());
   settings_.save(config);
-  server_.send(200, "text/html", buildPage("Saved. Return to FemtoDeck."));
+  server_.send(200, "text/html", buildPage("Saved. Return to Femto OS."));
   markDirty();
 }
 
@@ -479,7 +479,7 @@ String FemtoMinerApp::buildPage(const char* notice) const {
   html += F("<!doctype html><html><head><meta name='viewport' content='width=device-width,initial-scale=1'>");
   html += F("<title>Femto Miner Setup</title><style>body{font-family:sans-serif;margin:24px;max-width:640px}input{box-sizing:border-box;width:100%;padding:10px;margin:6px 0 14px}button{padding:10px 14px;margin-right:8px}.note{color:#075}.muted{color:#666}</style></head><body>");
   html += F("<h1>Femto Miner Setup</h1>");
-  html += F("<p class='muted'>Configure pool and payout wallet. WiFi networks are still configured from FemtoDeck WiFi Setup.</p>");
+  html += F("<p class='muted'>Configure pool and payout wallet. WiFi networks are still configured from Femto OS WiFi Setup.</p>");
   if (notice != nullptr) {
     html += F("<p class='note'>");
     html += notice;

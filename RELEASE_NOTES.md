@@ -1,5 +1,11 @@
 # Release Notes
 
+## v2.1 b81
+
+- Renamed the firmware/software branding to `Femto OS`, with `FemtoOS-*` target folders/artifacts and `FemtoDeck` retained only for device-style splash branding and compatibility names.
+- Renamed the Arduino target folders and sketch files to `FemtoOS-C3`, `FemtoOS-T-Display`, and `FemtoOS-C3-Headless`.
+- Updated build scripts, GitHub Actions, web installer manifests, simulator text, README, and docs for the new Femto OS naming.
+
 ## v2.0 b80
 
 - Expanded T-Display Screen Saver with Matrix Rain, Plasma, Fire, Bouncing Balls, Bezier Ribbons, Lissajous, Snowfall, Fireworks, Hyperspace Grid, Radar Sweep, Kaleidoscope, Spirograph, Sandstorm, and Night Drive.

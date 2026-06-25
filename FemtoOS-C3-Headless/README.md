@@ -1,6 +1,6 @@
-# Femto C3 Headless
+# Femto OS for C3 Headless
 
-Headless ESP32-C3 firmware for no-display FemtoDeck nodes.
+Headless ESP32-C3 firmware for no-display Femto Deck nodes.
 
 This sketch is for ESP32-C3 SuperMini style boards without a screen. It now has a tiny LED/button launcher with two apps:
 
@@ -14,13 +14,13 @@ Fresh boards start in the LED menu until an app is saved for autolaunch. Double-
 Compile:
 
 ```powershell
-arduino-cli compile --fqbn esp32:esp32:esp32c3:PartitionScheme=huge_app femto-c3-headless
+arduino-cli compile --fqbn esp32:esp32:esp32c3:PartitionScheme=huge_app FemtoOS-C3-Headless
 ```
 
 Upload, replacing `COM11` with the connected port:
 
 ```powershell
-arduino-cli upload --fqbn esp32:esp32:esp32c3:PartitionScheme=huge_app --port COM11 femto-c3-headless
+arduino-cli upload --fqbn esp32:esp32:esp32c3:PartitionScheme=huge_app --port COM11 FemtoOS-C3-Headless
 ```
 
 ## LED Menu
@@ -85,7 +85,7 @@ If the host still shows an old paired mouse entry after a triple-tap reset, remo
 
 ## Slave Miner App
 
-Slave Miner waits for a FemtoDeck Distributed Miner master, pairs over ESP-NOW, and mines assigned nonce ranges.
+Slave Miner waits for a Femto OS Distributed Miner master, pairs over ESP-NOW, and mines assigned nonce ranges.
 
 Slave Miner button rules:
 

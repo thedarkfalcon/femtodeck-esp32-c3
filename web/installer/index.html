@@ -3,18 +3,18 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>FemtoDeck Installer</title>
-    <meta name="description" content="Flash FemtoOS onto supported ESP32 boards and turn them into multifunction FemtoDeck devices.">
+    <title>Femto OS Installer</title>
+    <meta name="description" content="Flash Femto OS onto supported ESP32 boards and turn them into multifunction Femto Deck devices.">
     <script type="module" src="https://unpkg.com/esp-web-tools@10/dist/web/install-button.js"></script>
     <link rel="stylesheet" href="styles.css">
   </head>
   <body>
     <header class="site-header">
-      <a class="brand" href="./" aria-label="FemtoDeck installer home">
+      <a class="brand" href="./" aria-label="Femto OS installer home">
         <span class="brand-mark">FD</span>
         <span>
-          <strong>FemtoDeck</strong>
-          <small>FemtoOS installer</small>
+          <strong>Femto OS</strong>
+          <small>Femto OS installer</small>
         </span>
       </a>
       <nav aria-label="Project links">
@@ -28,9 +28,9 @@
       <section class="intro" aria-labelledby="title">
         <div>
           <p class="eyebrow">ESP32 handheld firmware</p>
-          <h1 id="title">Flash FemtoOS onto your ESP32 and make a multifunction FemtoDeck.</h1>
+          <h1 id="title">Flash Femto OS onto your ESP32 and make a multifunction Femto Deck.</h1>
           <p class="lede">
-            FemtoDeck turns tiny ESP32 boards into pocket utilities, games, WiFi tools,
+            Femto OS turns tiny ESP32 boards into pocket utilities, games, WiFi tools,
             Bluetooth mouse emulators, ESP-NOW communicators, and miner experiments.
           </p>
         </div>
@@ -63,35 +63,35 @@
             <div class="card-visual tiny-oled" aria-hidden="true">
               <span>72x40</span>
             </div>
-            <h3>FemtoDeck C3</h3>
-            <p>ESP32-C3 with the tiny 0.42 inch monochrome OLED and one-button FemtoDeck UI.</p>
+            <h3>Femto OS for C3</h3>
+            <p>ESP32-C3 with the tiny 0.42 inch monochrome OLED and one-button Femto OS UI.</p>
             <ul>
               <li>Chip: ESP32-C3</li>
               <li>Screen: 72x40 OLED</li>
               <li>Use for games, utilities, WiFi setup, mouse emulator, communicator, and miner apps.</li>
             </ul>
-            <esp-web-install-button manifest="manifest-femtodeck-c3.json"></esp-web-install-button>
+            <esp-web-install-button manifest="manifest-FemtoOS-C3.json"></esp-web-install-button>
           </article>
 
           <article class="card card-display">
             <div class="card-visual t-display" aria-hidden="true">
               <span>240x135</span>
             </div>
-            <h3>FemtoDeck T-Display</h3>
+            <h3>Femto OS for T-Display</h3>
             <p>Classic ESP32 T-Display build with color UI, two-button controls, and larger dashboards.</p>
             <ul>
               <li>Chip: ESP32</li>
               <li>Screen: ST7789 color TFT</li>
               <li>Best target for Femto Miner, Distributed Miner master mode, and richer app screens.</li>
             </ul>
-            <esp-web-install-button manifest="manifest-femtodeck-t-display.json"></esp-web-install-button>
+            <esp-web-install-button manifest="manifest-FemtoOS-T-Display.json"></esp-web-install-button>
           </article>
 
           <article class="card card-headless">
             <div class="card-visual headless" aria-hidden="true">
               <span>LED</span>
             </div>
-            <h3>Femto C3 Headless</h3>
+            <h3>Femto OS for C3 Headless</h3>
             <p>No-screen ESP32-C3 firmware with a tiny LED/button launcher for headless utilities.</p>
             <ul>
               <li>Chip: ESP32-C3</li>
@@ -101,16 +101,16 @@
               <li>Double-tap in an app to save autolaunch; double-tap in the menu clears it.</li>
               <li>Triple-tap inside an app clears that app's pairing.</li>
             </ul>
-            <esp-web-install-button manifest="manifest-femto-c3-headless.json"></esp-web-install-button>
+            <esp-web-install-button manifest="manifest-FemtoOS-C3-Headless.json"></esp-web-install-button>
           </article>
         </div>
       </section>
 
       <section class="info-grid" aria-labelledby="about-title">
         <article>
-          <h2 id="about-title">What is FemtoDeck?</h2>
+          <h2 id="about-title">What is Femto OS?</h2>
           <p>
-            FemtoDeck is a tiny ESP32 app launcher with board-specific interfaces and shared app logic.
+            Femto OS is a tiny ESP32 app launcher with board-specific interfaces and shared app logic.
             The C3 build is designed around extreme constraints, while the T-Display build uses the larger
             color screen for dashboards and smoother two-button controls.
           </p>
@@ -135,7 +135,7 @@
 
     <footer class="site-footer">
       <span>Build: __BUILD_TEXT__</span>
-      <span>FemtoDeck is released under WTFPL + No Warranty Disclaimer.</span>
+      <span>Femto OS is released under WTFPL + No Warranty Disclaimer.</span>
     </footer>
   </body>
 </html>

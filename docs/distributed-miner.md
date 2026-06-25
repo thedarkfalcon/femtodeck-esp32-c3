@@ -1,6 +1,6 @@
 # Distributed Miner
 
-Distributed Miner is FemtoDeck's ESP-NOW cluster mining mode. One screened FemtoDeck acts as the master, connects to WiFi and the mining pool, then assigns nonce ranges to nearby slaves over ESP-NOW.
+Distributed Miner is Femto OS's ESP-NOW cluster mining mode. One screened Femto Deck acts as the master, connects to WiFi and the mining pool, then assigns nonce ranges to nearby slaves over ESP-NOW.
 
 This is separate from **Femto Miner**:
 
@@ -11,7 +11,7 @@ This is separate from **Femto Miner**:
 
 The master:
 
-- connects to WiFi using saved FemtoDeck WiFi profiles
+- connects to WiFi using saved Femto OS WiFi profiles
 - loads saved Femto Miner wallet and pool settings
 - connects to the Stratum pool once
 - broadcasts a pairing beacon when pairing is enabled
@@ -65,18 +65,18 @@ The C3 OLED UI is compact and mainly useful for testing or lightweight slave use
 
 ### ESP32-C3 Headless
 
-Flash the `femto-c3-headless` build. It has a tiny LED/button launcher with Mouse Emulator and Slave Miner apps. Fresh boards start in the LED menu; open Slave Miner from the menu, or double-tap while Slave Miner is running to save it as the autolaunch app.
+Flash the `FemtoOS-C3-Headless` build. It has a tiny LED/button launcher with Mouse Emulator and Slave Miner apps. Fresh boards start in the LED menu; open Slave Miner from the menu, or double-tap while Slave Miner is running to save it as the autolaunch app.
 
 To clear a saved headless autolaunch app, return to the LED menu and double-tap. The menu becomes the boot default again.
 
-See [../femto-c3-headless/README.md](../femto-c3-headless/README.md) for the headless-specific LED and BOOT behavior.
+See [../FemtoOS-C3-Headless/README.md](../FemtoOS-C3-Headless/README.md) for the headless-specific LED and BOOT behavior.
 
 ## Typical Setup
 
-1. Flash the master with **FemtoDeck T-Display** or **FemtoDeck C3**.
+1. Flash the master with **Femto OS for T-Display** or **Femto OS for C3**.
 2. Configure WiFi on the master through **WiFi Setup**.
 3. Configure wallet and pool settings through **Femto Miner** setup if you do not want the defaults.
-4. Flash slave boards with **Femto C3 Headless**, or launch **Distributed Miner** in **Slave** mode on screened boards.
+4. Flash slave boards with **Femto OS for C3 Headless**, or launch **Distributed Miner** in **Slave** mode on screened boards.
 5. Launch **Distributed Miner** on the master in **Master** mode.
 6. Start the cluster.
 7. Open the pairing page and start **Pair Slaves**.
@@ -89,13 +89,13 @@ See [../femto-c3-headless/README.md](../femto-c3-headless/README.md) for the hea
 - **Pair Slaves**: Button 1 starts pairing.
 - **Cluster Control**: Button 1 toggles local mining. Button 1 hold starts/stops the cluster.
 - **Reset Cluster**: Button 1 resets the cluster ID. Slaves must pair again.
-- Button 2 hold exits to the FemtoDeck menu.
+- Button 2 hold exits to the Femto OS menu.
 
 ## T-Display Slave Controls
 
 - Button 2 changes status/detail pages.
 - **Clear Pairing**: Button 1 hold forgets the saved master.
-- **Exit Slave**: Button 1 hold exits to the FemtoDeck menu.
+- **Exit Slave**: Button 1 hold exits to the Femto OS menu.
 - Button 2 hold also exits to the menu.
 
 ## Headless C3 LED And Button
@@ -140,7 +140,7 @@ Headless C3 serial also runs at `115200` baud and prints status every two second
 
 ## Clearing Saved Cluster Data
 
-On FemtoDeck builds, use:
+On Femto OS builds, use:
 
 **Options / Save Manager / Cluster**
 

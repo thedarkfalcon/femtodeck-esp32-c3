@@ -1,6 +1,6 @@
-# Flashing FemtoDeck
+# Flashing Femto OS
 
-The easiest way to install FemtoDeck is the browser flasher:
+The easiest way to install Femto OS and turn a supported ESP32 board into a Femto Deck is the browser flasher:
 
 [https://thedarkfalcon.github.io/femtodeck-esp32-c3/](https://thedarkfalcon.github.io/femtodeck-esp32-c3/)
 
@@ -8,9 +8,9 @@ Use Chrome or Edge on a desktop computer. Mobile browsers usually do not expose 
 
 ## Which Build To Pick
 
-- **FemtoDeck C3**: ESP32-C3 with the 0.42 inch `72x40` OLED.
-- **FemtoDeck T-Display**: classic ESP32 T-Display with `240x135` color TFT.
-- **Femto C3 Headless**: no-screen ESP32-C3 with LED/button launcher, Mouse Emulator, and Distributed Miner slave.
+- **Femto OS for C3**: ESP32-C3 with the 0.42 inch `72x40` OLED.
+- **Femto OS for T-Display**: classic ESP32 T-Display with `240x135` color TFT.
+- **Femto OS for C3 Headless**: no-screen ESP32-C3 with LED/button launcher, Mouse Emulator, and Distributed Miner slave.
 
 ## Browser Flashing
 
@@ -48,15 +48,15 @@ Replace `COM9` with your board's actual serial port.
 Manual `esptool` commands:
 
 ```powershell
-python -m esptool --chip esp32c3 --port COM9 --baud 460800 write_flash -z 0x0 femtodeck-c3-merged.bin
+python -m esptool --chip esp32c3 --port COM9 --baud 460800 write_flash -z 0x0 FemtoOS-C3-merged.bin
 ```
 
 ```powershell
-python -m esptool --chip esp32c3 --port COM9 --baud 460800 write_flash -z 0x0 femto-c3-headless-merged.bin
+python -m esptool --chip esp32c3 --port COM9 --baud 460800 write_flash -z 0x0 FemtoOS-C3-Headless-merged.bin
 ```
 
 ```powershell
-python -m esptool --chip esp32 --port COM6 --baud 460800 write_flash -z 0x0 femtodeck-t-display-merged.bin
+python -m esptool --chip esp32 --port COM6 --baud 460800 write_flash -z 0x0 FemtoOS-T-Display-merged.bin
 ```
 
 On Linux/macOS, use the same commands with `python3` and a serial device such as `/dev/ttyACM0` or `/dev/ttyUSB0`.
@@ -88,15 +88,15 @@ arduino-cli board list
 Upload the matching sketch with `arduino-cli`:
 
 ```powershell
-arduino-cli upload --fqbn esp32:esp32:esp32c3:PartitionScheme=huge_app --port COM9 femtodeck-c3
+arduino-cli upload --fqbn esp32:esp32:esp32c3:PartitionScheme=huge_app --port COM9 FemtoOS-C3
 ```
 
 ```powershell
-arduino-cli upload --fqbn esp32:esp32:esp32c3:PartitionScheme=huge_app --port COM9 femto-c3-headless
+arduino-cli upload --fqbn esp32:esp32:esp32c3:PartitionScheme=huge_app --port COM9 FemtoOS-C3-Headless
 ```
 
 ```powershell
-arduino-cli upload --fqbn esp32:esp32:esp32:PartitionScheme=huge_app --port COM6 femtodeck-t-display
+arduino-cli upload --fqbn esp32:esp32:esp32:PartitionScheme=huge_app --port COM6 FemtoOS-T-Display
 ```
 
 Replace `COM9` / `COM6` with the port from `arduino-cli board list`. On Linux/macOS, use a serial device such as `/dev/ttyACM0` or `/dev/ttyUSB0`.
@@ -108,15 +108,15 @@ The normal local build scripts compile the sketches, but release-style merged bi
 Examples:
 
 ```powershell
-arduino-cli compile --export-binaries --fqbn esp32:esp32:esp32c3:PartitionScheme=huge_app femtodeck-c3
+arduino-cli compile --export-binaries --fqbn esp32:esp32:esp32c3:PartitionScheme=huge_app FemtoOS-C3
 ```
 
 ```powershell
-arduino-cli compile --export-binaries --fqbn esp32:esp32:esp32c3:PartitionScheme=huge_app femto-c3-headless
+arduino-cli compile --export-binaries --fqbn esp32:esp32:esp32c3:PartitionScheme=huge_app FemtoOS-C3-Headless
 ```
 
 ```powershell
-arduino-cli compile --export-binaries --fqbn esp32:esp32:esp32:PartitionScheme=huge_app femtodeck-t-display
+arduino-cli compile --export-binaries --fqbn esp32:esp32:esp32:PartitionScheme=huge_app FemtoOS-T-Display
 ```
 
 Find the generated merged binary:
@@ -128,15 +128,15 @@ Get-ChildItem . -Recurse -Filter *.merged.bin
 Then flash it with `esptool`, using the correct chip family:
 
 ```powershell
-python -m esptool --chip esp32c3 --port COM9 --baud 460800 write_flash -z 0x0 .\femtodeck-c3\build\...\femtodeck-c3.ino.merged.bin
+python -m esptool --chip esp32c3 --port COM9 --baud 460800 write_flash -z 0x0 .\FemtoOS-C3\build\...\FemtoOS-C3.ino.merged.bin
 ```
 
 ```powershell
-python -m esptool --chip esp32c3 --port COM9 --baud 460800 write_flash -z 0x0 .\femto-c3-headless\build\...\femto-c3-headless.ino.merged.bin
+python -m esptool --chip esp32c3 --port COM9 --baud 460800 write_flash -z 0x0 .\FemtoOS-C3-Headless\build\...\FemtoOS-C3-Headless.ino.merged.bin
 ```
 
 ```powershell
-python -m esptool --chip esp32 --port COM6 --baud 460800 write_flash -z 0x0 .\femtodeck-t-display\build\...\femtodeck-t-display.ino.merged.bin
+python -m esptool --chip esp32 --port COM6 --baud 460800 write_flash -z 0x0 .\FemtoOS-T-Display\build\...\FemtoOS-T-Display.ino.merged.bin
 ```
 
 The `...\` in those paths is a placeholder for the board build folder printed by `Get-ChildItem`; use the actual merged binary path on your machine.
@@ -160,5 +160,5 @@ If multiple ports are shown, unplug the board, run the command, plug it back in,
 - Hold **BOOT** while connecting USB if flashing cannot enter bootloader mode.
 - Try a different USB cable. Charge-only cables are very common.
 - Close Arduino Serial Monitor or any other program using the COM port.
-- For ESP32-C3 boards with a tiny OLED, make sure you selected **FemtoDeck C3**, not the T-Display build.
-- For T-Display boards, make sure you selected **FemtoDeck T-Display**, not an ESP32-C3 build.
+- For ESP32-C3 boards with a tiny OLED, make sure you selected **Femto OS for C3**, not the T-Display build.
+- For T-Display boards, make sure you selected **Femto OS for T-Display**, not an ESP32-C3 build.

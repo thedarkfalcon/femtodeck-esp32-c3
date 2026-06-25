@@ -238,7 +238,7 @@ const char* currentMenuTitle() {
       return "Settings";
     case MenuView::Root:
     default:
-      return "FemtoDeck";
+      return "Femto OS";
   }
 }
 
@@ -270,8 +270,10 @@ void drawBootSplash() {
   u8g2.drawStr(bottomX, 24, bottom);
 
   u8g2.setFont(u8g2_font_4x6_tr);
-  const int buildX = (SCREEN_WIDTH - u8g2.getStrWidth(BuildInfo::BUILD_TEXT)) / 2;
-  u8g2.drawStr(buildX, 38, BuildInfo::BUILD_TEXT);
+  char versionLine[24];
+  snprintf(versionLine, sizeof(versionLine), "Femto OS %s", BuildInfo::BUILD_TEXT);
+  const int buildX = (SCREEN_WIDTH - u8g2.getStrWidth(versionLine)) / 2;
+  u8g2.drawStr(buildX, 38, versionLine);
 }
 
 void drawMenu() {

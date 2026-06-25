@@ -1,6 +1,6 @@
-# FemtoDeck
+# Femto OS
 
-FemtoDeck is a small multi-app handheld OS for tiny ESP32 boards. It started as an expansion of Atomic14's [esp32-c3-oled-single-button-games](https://github.com/atomic14/esp32-c3-oled-single-button-games), then grew into a ground-up rewrite with games, utilities, WiFi tools, ESP-NOW messaging, solo mining, and distributed miner modes.
+Femto OS is a small multi-app handheld OS for tiny ESP32 boards. It started as an expansion of Atomic14's [esp32-c3-oled-single-button-games](https://github.com/atomic14/esp32-c3-oled-single-button-games), then grew into a ground-up rewrite with games, utilities, WiFi tools, ESP-NOW messaging, solo mining, and distributed miner modes.
 
 Repo shortcut: [git.new/esp32games](https://git.new/esp32games)
 
@@ -18,14 +18,14 @@ Quick links:
 
 ## Getting Started
 
-If you already have a supported ESP32 board and just want to put FemtoDeck on it:
+If you already have a supported ESP32 board and just want to put Femto OS on it:
 
 1. Open the [web flasher](https://thedarkfalcon.github.io/femtodeck-esp32-c3/) in Chrome or Edge.
 2. Connect the board over USB.
 3. Click **Install** on the card that matches your board:
-   - **FemtoDeck C3** for the ESP32-C3 0.42 inch OLED board.
-   - **FemtoDeck T-Display** for the TENSTAR/LilyGO-style ESP32 T-Display.
-   - **Femto C3 Headless** for no-screen ESP32-C3 boards used as Distributed Miner slaves.
+   - **Femto OS for C3** for the ESP32-C3 0.42 inch OLED board.
+   - **Femto OS for T-Display** for the TENSTAR/LilyGO-style ESP32 T-Display.
+   - **Femto OS for C3 Headless** for no-screen ESP32-C3 boards used as Distributed Miner slaves.
 4. Choose the serial port when the browser prompts for it.
 5. If flashing fails, hold **BOOT** while plugging in the board, then try again.
 
@@ -58,14 +58,14 @@ For fallback flashing commands, browser requirements, and release asset details,
 
 ## Controls
 
-### FemtoDeck C3
+### Femto OS for C3
 
 - Menu tap: next item.
 - Menu hold: open selected item.
 - App/game tap: primary action.
 - App/game hold: secondary action or return.
 
-### FemtoDeck T-Display
+### Femto OS for T-Display
 
 - Button 1 tap: next / primary action.
 - Button 1 hold: launch / secondary action.
@@ -74,7 +74,7 @@ For fallback flashing commands, browser requirements, and release asset details,
 
 ## Included Features
 
-FemtoDeck includes arcade-style games, small utilities, settings tools, ESP-NOW utilities, and miner tools. Most mature apps keep logic in `shared/` and use board-specific rendering/input code for the tiny OLED or larger T-Display.
+Femto OS includes arcade-style games, small utilities, settings tools, ESP-NOW utilities, and miner tools. Most mature apps keep logic in `shared/` and use board-specific rendering/input code for the tiny OLED or larger T-Display.
 
 Radio and network utilities:
 
@@ -109,9 +109,9 @@ The build scripts do not bump `Version.h`. Release/version bumps should be made 
 
 ## Project Layout
 
-- `femtodeck-c3/`: ESP32-C3 OLED sketch.
-- `femtodeck-t-display/`: T-Display sketch.
-- `femto-c3-headless/`: no-display ESP32-C3 sketch.
+- `FemtoOS-C3/`: ESP32-C3 OLED sketch.
+- `FemtoOS-T-Display/`: T-Display sketch.
+- `FemtoOS-C3-Headless/`: no-display ESP32-C3 sketch.
 - `shared/`: source of truth for shared logic copied into each sketch before build.
 - `sim/`: browser-based C3 simulator and editors.
 - `docs/`: focused documentation for flashing and larger app workflows.
@@ -126,6 +126,6 @@ The flasher currently supports the C3 OLED, T-Display, and headless C3 builds.
 
 ## License
 
-FemtoDeck is released under WTFPL + No Warranty Disclaimer. See [LICENSE](LICENSE).
+Femto OS is released under WTFPL + No Warranty Disclaimer. See [LICENSE](LICENSE).
 
 Femto Miner includes MIT-attributed mining/Stratum logic adapted from NerdMiner_v2. See [licenses/NerdMiner_v2-MIT.txt](licenses/NerdMiner_v2-MIT.txt).

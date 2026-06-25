@@ -2,9 +2,9 @@ $ErrorActionPreference = "Stop"
 
 $Esp32BoardUrl = "https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json"
 $Targets = @(
-  @{ Sketch = "femtodeck-c3"; Fqbn = "esp32:esp32:esp32c3:PartitionScheme=huge_app" },
-  @{ Sketch = "femtodeck-t-display"; Fqbn = "esp32:esp32:esp32:PartitionScheme=huge_app" },
-  @{ Sketch = "femto-c3-headless"; Fqbn = "esp32:esp32:esp32c3:PartitionScheme=huge_app" }
+  @{ Sketch = "FemtoOS-C3"; Fqbn = "esp32:esp32:esp32c3:PartitionScheme=huge_app" },
+  @{ Sketch = "FemtoOS-T-Display"; Fqbn = "esp32:esp32:esp32:PartitionScheme=huge_app" },
+  @{ Sketch = "FemtoOS-C3-Headless"; Fqbn = "esp32:esp32:esp32c3:PartitionScheme=huge_app" }
 )
 
 function Invoke-ArduinoCli {
@@ -82,4 +82,4 @@ try {
 }
 
 Write-Host ""
-Write-Host "All FemtoDeck targets built successfully"
+Write-Host "All Femto OS targets built successfully"

@@ -1,6 +1,6 @@
 #pragma once
 
-// Femto Miner integrates a small Stratum/SHA mining engine for FemtoDeck.
+// Femto Miner integrates a small Stratum/SHA mining engine for Femto OS.
 // The Stratum flow and Bitcoin header hashing approach are adapted from the
 // MIT-licensed NerdMiner_v2 project, source revision:
 // a26865f7cdd9ac1a81c5b0a7c355e23cf4a1d568.

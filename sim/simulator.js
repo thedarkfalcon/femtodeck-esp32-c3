@@ -3,7 +3,7 @@
   const H = 40;
   const LONG_MS = 700;
   const END_LOCK_MS = 500;
-  const BUILD_TEXT = "v2.0 b76";
+  const BUILD_TEXT = "v2.1 b81";
   const READING_LINES_PER_PAGE = 3;
 
   const canvas = document.getElementById("oled");
@@ -2313,7 +2313,7 @@
     menuTitle() {
       if (this.menu === "games") return "Games";
       if (this.menu === "utilities") return "Utilities";
-      return "FemtoDeck";
+      return "Femto OS";
     }
     selectMenuEntry(now) {
       const entry = this.currentEntries()[this.menuIndex];
@@ -2339,7 +2339,7 @@
       gfx.rect(0, 0, W, H);
       gfx.text(8, 12, "FemtoDeck", 7);
       gfx.text(30, 25, "C3", 7);
-      gfx.text(20, 38, BUILD_TEXT);
+      gfx.text(10, 38, `Femto OS ${BUILD_TEXT}`, 4);
     }
     drawMenu() {
       const entries = this.currentEntries();

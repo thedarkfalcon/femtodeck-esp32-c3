@@ -495,15 +495,15 @@ String WiFiSetupApp::buildPage(const char* notice) const {
   String html;
   html.reserve(5600);
   html += F("<!doctype html><html><head><meta name='viewport' content='width=device-width,initial-scale=1'>");
-  html += F("<title>FemtoDeck WiFi</title><style>");
+  html += F("<title>Femto OS WiFi</title><style>");
   html += F("body{font-family:system-ui,sans-serif;background:#10141c;color:#eef3ff;margin:0;padding:24px}");
   html += F("main{max-width:560px;margin:auto;background:#171d28;border:1px solid #334155;border-radius:8px;padding:20px}");
   html += F("label{display:block;margin:14px 0 6px}input,button{box-sizing:border-box;width:100%;font:inherit;padding:10px;border-radius:6px}");
   html += F("input{border:1px solid #64748b;background:#0b1020;color:#eef3ff}button{border:0;background:#3b82f6;color:white;margin-top:12px}");
   html += F(".muted{color:#b8c2d6}.notice{background:#263349;border-radius:6px;padding:10px}.profile{border-top:1px solid #334155;padding:10px 0}");
   html += F("</style></head><body><main>");
-  html += F("<h1>FemtoDeck WiFi Setup</h1>");
-  html += F("<p class='muted'>Save up to five WiFi networks. Setup WiFi password is <strong>femtodeck</strong>. Testing and deleting saved networks is done from FemtoDeck.</p>");
+  html += F("<h1>Femto OS WiFi Setup</h1>");
+  html += F("<p class='muted'>Save up to five WiFi networks. Setup WiFi password is <strong>femtodeck</strong>. Testing and deleting saved networks is done from Femto OS.</p>");
 
   if (notice != nullptr) {
     html += F("<p class='notice'>");
@@ -544,7 +544,7 @@ String WiFiSetupApp::buildPage(const char* notice) const {
   html += F("<label for='pass'>Password</label>");
   html += F("<input id='pass' name='pass' type='password' autocomplete='current-password'>");
   html += F("<button type='submit'>Save WiFi</button></form>");
-  html += F("<p class='muted'>After saving, return to FemtoDeck. Press B2 to leave setup.</p>");
+  html += F("<p class='muted'>After saving, return to Femto OS. Press B2 to leave setup.</p>");
   html += F("</main></body></html>");
   return html;
 }

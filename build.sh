@@ -5,9 +5,9 @@ ESP32_BOARD_URL="https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pa
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 
 TARGETS=(
-  "femtodeck-c3|esp32:esp32:esp32c3:PartitionScheme=huge_app"
-  "femtodeck-t-display|esp32:esp32:esp32:PartitionScheme=huge_app"
-  "femto-c3-headless|esp32:esp32:esp32c3:PartitionScheme=huge_app"
+  "FemtoOS-C3|esp32:esp32:esp32c3:PartitionScheme=huge_app"
+  "FemtoOS-T-Display|esp32:esp32:esp32:PartitionScheme=huge_app"
+  "FemtoOS-C3-Headless|esp32:esp32:esp32c3:PartitionScheme=huge_app"
 )
 
 sync_shared_code() {
@@ -49,4 +49,4 @@ for target in "${TARGETS[@]}"; do
 done
 
 echo
-echo "All FemtoDeck targets built successfully"
+echo "All Femto OS targets built successfully"

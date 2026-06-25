@@ -300,7 +300,7 @@ const char* currentMenuTitle() {
       return "Settings";
     case MenuView::Root:
     default:
-      return "FemtoDeck";
+      return "Femto OS";
   }
 }
 
@@ -794,7 +794,8 @@ void drawBootSplash() {
 
   drawCenteredText("FemtoDeck", 42, 3, TFT_WHITE);
   drawCenteredText("T-Display", 72, 2, TFT_CYAN);
-  drawCenteredText(BuildInfo::BUILD_TEXT, 114, 1, TFT_LIGHTGREY);
+  String versionLine = String("Femto OS ") + BuildInfo::BUILD_TEXT;
+  drawCenteredText(versionLine.c_str(), 114, 1, TFT_LIGHTGREY);
 }
 
 template <typename Canvas>
